@@ -91,7 +91,7 @@ const ArtistAlbums = lazy(() => import("./artist/Albums/Albums"));
 const AddAlbum = lazy(() => import("./artist/Albums/AddAlbum"));
 const EditAlbum = lazy(() => import("./artist/Albums/EditAlbum"));
 const ArtistCollections = lazy(
-  () => import("./artist/collections/Collections"),
+  () => import("./artist/Collections/Collections")
 );
 
 const ArtistAnalytics = lazy(() => import("./artist/analytics/Analytics"));
