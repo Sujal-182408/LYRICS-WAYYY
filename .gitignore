@@ -27,3 +27,7 @@ Thumbs.db
 .cache/
 .vite/
 coverage/
+
+# Backend uploaded media
+backend/uploads/
+backend/private_uploads/
