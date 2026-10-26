@@ -86,12 +86,10 @@ const ArtistDashboard = lazy(
 const ArtistSongs = lazy(() => import("./artist/Songs/Songs"));
 const AddSong = lazy(() => import("./artist/Songs/AddSongs"));
 const EditSong = lazy(() => import("./artist/Songs/EditSongs"));
-const ArtistAlbums = lazy(() => import("./artist/albums/Albums"));
 
-const AddAlbum = lazy(() => import("./artist/albums/AddAlbum"));
-
-const EditAlbum = lazy(() => import("./artist/albums/EditAlbum"));
-
+const ArtistAlbums = lazy(() => import("./artist/Albums/Albums"));
+const AddAlbum = lazy(() => import("./artist/Albums/AddAlbum"));
+const EditAlbum = lazy(() => import("./artist/Albums/EditAlbum"));
 const ArtistCollections = lazy(
   () => import("./artist/collections/Collections"),
 );
