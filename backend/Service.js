@@ -105,6 +105,9 @@ app.use(
 
 
 const allowedOrigins = [
+  // Production frontend
+  "https://lyricswayyy.vercel.app",
+
   // Local development
   "http://localhost:5173",
   "http://127.0.0.1:5173",
@@ -122,6 +125,7 @@ const allowedOrigins = [
 ]
   .filter(Boolean)
   .map((origin) => origin.trim().replace(/\/+$/, ""));
+
 
 app.use(
   cors({
