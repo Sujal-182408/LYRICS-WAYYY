@@ -30,7 +30,9 @@ import Signup from "./assets/layout/Signup";
 // GLOBAL FLOATING BACK BUTTON — LAZY LOADED
 // =====================================================
 
-const FloatingBackButton = lazy(() => import("./assets/utility/FloatingBackButton"));
+const FloatingBackButton = lazy(
+  () => import("./assets/utility/FloatingBackButton"),
+);
 
 // =====================================================
 // PUBLIC PAGES
@@ -81,12 +83,9 @@ const ArtistDashboard = lazy(
   () => import("./artist/Dashboard/ArtistDashboard"),
 );
 
-const ArtistSongs = lazy(() => import("./artist/songs/Songs"));
-
-const AddSong = lazy(() => import("./artist/songs/AddSongs"));
-
-const EditSong = lazy(() => import("./artist/songs/EditSongs"));
-
+const ArtistSongs = lazy(() => import("./artist/Songs/Songs"));
+const AddSong = lazy(() => import("./artist/Songs/AddSongs"));
+const EditSong = lazy(() => import("./artist/Songs/EditSongs"));
 const ArtistAlbums = lazy(() => import("./artist/albums/Albums"));
 
 const AddAlbum = lazy(() => import("./artist/albums/AddAlbum"));
