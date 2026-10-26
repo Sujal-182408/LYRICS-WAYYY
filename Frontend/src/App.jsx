@@ -94,7 +94,7 @@ const ArtistCollections = lazy(
   () => import("./artist/Collections/Collections")
 );
 
-const ArtistAnalytics = lazy(() => import("./artist/analytics/Analytics"));
+const ArtistAnalytics = lazy(() => import("./artist/Analytics/Analytics"));
 
 const ArtistProfile = lazy(() => import("./artist/Profile/ArtistProfile"));
 
