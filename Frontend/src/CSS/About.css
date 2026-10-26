@@ -1,0 +1,971 @@
+/* =========================================================
+   ABOUT — THEME-AWARE NEUMORPHIC DESIGN
+   Theme colors come from ThemeContext.jsx
+========================================================= */
+
+:root {
+  --about-bg: var(--theme-background);
+  --about-panel: var(--theme-surface);
+  --about-deep: var(--theme-surface-light);
+
+  --about-border: var(--theme-border);
+  --about-text: var(--theme-text);
+  --about-muted: var(--theme-text-muted);
+
+  --about-purple: var(--theme-primary);
+  --about-cyan: var(--theme-secondary);
+
+  --about-shadow-dark: var(--theme-shadow-dark);
+  --about-shadow-light: var(--theme-shadow-light);
+}
+
+/* =========================================================
+   MAIN SECTION
+========================================================= */
+
+.neu-about {
+  position: relative;
+  isolation: isolate;
+  background: var(--theme-background);
+  color: var(--theme-text);
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+
+/* .neu-about::before,
+.neu-about::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: aboutBackgroundGlow 8s ease-in-out infinite;
+} */
+/* 
+.neu-about::before {
+  top: 15%;
+  left: -260px;
+  background: radial-gradient(
+    circle,
+    var(--theme-glow-primary),
+    transparent 68%
+  );
+} */
+
+/* .neu-about::after {
+  right: -250px;
+  bottom: -180px;
+  background: radial-gradient(
+    circle,
+    var(--theme-glow-secondary),
+    transparent 68%
+  );
+  animation-duration: 10s;
+  animation-direction: reverse;
+} */
+
+/* .about-background-glow {
+  position: absolute;
+  z-index: -1;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.18;
+} */
+
+.about-background-glow-left {
+  top: 25%;
+  left: 5%;
+  background: var(--theme-primary);
+}
+
+.about-background-glow-right {
+  right: 5%;
+  bottom: 10%;
+  background: var(--theme-secondary);
+}
+
+/* =========================================================
+   PROFILE COLUMN
+========================================================= */
+
+.neu-about-left,
+.neu-about-right {
+  min-width: 0;
+}
+
+.profile-tilt {
+  position: relative;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.15s ease-out;
+}
+
+.profile-card {
+  isolation: isolate;
+  background: var(--theme-surface);
+  border-color: var(--theme-border);
+  box-shadow:
+    12px 12px 26px var(--theme-shadow-dark),
+    -8px -8px 20px var(--theme-shadow-light),
+    inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transform-style: preserve-3d;
+  animation: profileCardFloat 7s ease-in-out infinite;
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.profile-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 250px;
+  height: 250px;
+  top: -130px;
+  right: -130px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--theme-glow-primary),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* =========================================================
+   ONLINE STATUS
+========================================================= */
+
+.profile-status {
+  color: var(--theme-secondary);
+  background: var(--theme-background);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    inset 4px 4px 9px var(--theme-shadow-dark),
+    inset -3px -3px 7px var(--theme-shadow-light);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+}
+
+.profile-status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--theme-secondary);
+  box-shadow: 0 0 10px var(--theme-glow-secondary);
+  animation: statusPulse 1.8s ease-in-out infinite;
+}
+
+/* =========================================================
+   PROFILE VISUAL
+========================================================= */
+
+.profile-visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(340px, 100%);
+  aspect-ratio: 1;
+  margin: 28px auto 20px;
+  flex-shrink: 0;
+  transform-style: preserve-3d;
+  animation: visualFloat 6s ease-in-out infinite;
+}
+
+.circle-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 74%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--theme-glow-primary),
+    transparent 72%
+  );
+  filter: blur(4px);
+  pointer-events: none;
+  animation: circleGlow 3.5s ease-in-out infinite;
+}
+
+/* =========================================================
+   ORBIT RINGS
+========================================================= */
+
+.orbit-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 1px solid;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.orbit-ring-one {
+  width: 94%;
+  height: 94%;
+  border-color: var(--theme-primary);
+}
+
+.orbit-ring-two {
+  width: 86%;
+  height: 86%;
+  border-color: var(--theme-secondary);
+}
+
+.orbit-rotator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transform-origin: center;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.orbit-rotator-one {
+  animation: orbitClockwise 8s linear infinite;
+}
+
+.orbit-rotator-two {
+  animation: orbitCounterClockwise 6s linear infinite;
+}
+
+.orbit-pulse {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-sizing: border-box;
+  pointer-events: none;
+  will-change: opacity, filter;
+}
+
+.orbit-pulse-one {
+  border: 1px solid var(--theme-primary);
+  animation: purpleOrbitPulse 2.2s ease-in-out infinite;
+}
+
+.orbit-pulse-two {
+  border: 1px solid var(--theme-secondary);
+  animation: cyanOrbitPulse 1.9s ease-in-out infinite;
+}
+
+.orbit-dot {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.orbit-dot-purple {
+  background: var(--theme-primary);
+  box-shadow: 0 0 14px var(--theme-glow-primary);
+  animation: orbitDotPulse 1.4s ease-in-out infinite;
+}
+
+.orbit-dot-cyan {
+  background: var(--theme-secondary);
+  box-shadow: 0 0 14px var(--theme-glow-secondary);
+  animation: orbitDotPulse 1.2s ease-in-out infinite;
+}
+
+/* =========================================================
+   PROFILE IMAGE
+========================================================= */
+
+.profile-photo-frame {
+  position: relative;
+  z-index: 5;
+  width: 79%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border-radius: 50%;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    10px 10px 22px var(--theme-shadow-dark),
+    -7px -7px 16px var(--theme-shadow-light);
+  animation: imageFloat 5s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.profile-photo-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--theme-background);
+  box-shadow:
+    inset 7px 7px 14px var(--theme-shadow-dark),
+    inset -5px -5px 11px var(--theme-shadow-light);
+}
+
+.profile-photo-inner img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
+  transform: scale(1.02);
+  animation: imageBreath 5s ease-in-out infinite;
+  transition: transform 0.6s ease;
+}
+
+.profile-photo-frame:hover .profile-photo-inner img {
+  transform: scale(1.07);
+}
+
+.photo-highlight {
+  position: absolute;
+  top: -20%;
+  left: -45%;
+  width: 45%;
+  height: 150%;
+  transform: rotate(20deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  filter: blur(2px);
+  pointer-events: none;
+  animation: highlightMove 5s ease-in-out infinite;
+}
+
+/* =========================================================
+   FLOATING DETAILS
+========================================================= */
+
+.floating-dot {
+  position: absolute;
+  z-index: 6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--theme-primary);
+  box-shadow: 0 0 10px var(--theme-glow-primary);
+  animation: floatingDot 3s ease-in-out infinite;
+}
+
+.floating-dot-one {
+  left: 6%;
+  top: 21%;
+}
+
+.floating-dot-two {
+  right: 5%;
+  top: 37%;
+  width: 5px;
+  height: 5px;
+  background: var(--theme-secondary);
+  box-shadow: 0 0 10px var(--theme-glow-secondary);
+  animation-delay: -1s;
+}
+
+.floating-dot-three {
+  right: 16%;
+  bottom: 9%;
+  width: 4px;
+  height: 4px;
+  animation-delay: -2s;
+}
+
+.profile-badge {
+  position: absolute;
+  z-index: 10;
+  right: 4%;
+  bottom: 3%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 50%;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    6px 6px 13px var(--theme-shadow-dark),
+    -4px -4px 9px var(--theme-shadow-light);
+  color: var(--theme-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  animation: badgeFloat 4s ease-in-out infinite;
+}
+
+/* =========================================================
+   PROFILE TEXT
+========================================================= */
+
+.profile-bottom {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+}
+
+.profile-eyebrow {
+  margin: 8px 0;
+  color: var(--theme-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.profile-heading {
+  margin: 0;
+  color: var(--theme-text);
+  font-family: "Kanit", "Inter", sans-serif;
+  font-size: clamp(34px, 4vw, 48px);
+  line-height: 0.94;
+  letter-spacing: 5px;
+  font-weight: 800;
+  text-shadow: 0 0 20px var(--theme-glow-primary);
+}
+
+.profile-heading span {
+  color: var(--theme-primary);
+  text-shadow: 0 0 20px var(--theme-glow-primary);
+}
+
+.profile-divider {
+  width: 80%;
+  height: 1px;
+  margin: 20px auto 18px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--theme-primary),
+    var(--theme-secondary),
+    transparent
+  );
+}
+
+.profile-stat-card {
+  background: var(--theme-background);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    inset 4px 4px 9px var(--theme-shadow-dark),
+    inset -3px -3px 7px var(--theme-shadow-light);
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.profile-stat-num {
+  margin: 0;
+  color: var(--theme-primary);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.profile-stat-label {
+  margin: 4px 0 0;
+  color: var(--theme-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* =========================================================
+   RIGHT SIDE
+========================================================= */
+
+.section-label {
+  padding: 9px 14px;
+  color: var(--theme-secondary);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    4px 4px 8px var(--theme-shadow-dark),
+    -4px -4px 8px var(--theme-shadow-light);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+}
+
+.section-label::before {
+  content: "";
+  width: 26px;
+  height: 1px;
+  background: var(--theme-secondary);
+  box-shadow: 0 0 8px var(--theme-glow-secondary);
+}
+
+.about-heading {
+  max-width: 760px;
+  color: var(--theme-text);
+  font-size: clamp(38px, 5vw, 72px);
+  line-height: 0.98;
+  letter-spacing: -3px;
+}
+
+.about-heading-accent {
+  color: var(--theme-primary);
+  text-shadow: 0 0 30px var(--theme-glow-primary);
+}
+
+/* =========================================================
+   INFORMATION CARD
+========================================================= */
+
+.info-card {
+  padding: clamp(20px, 3vw, 38px);
+  border-radius: 25px;
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    9px 9px 20px var(--theme-shadow-dark),
+    -6px -6px 15px var(--theme-shadow-light);
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.info-copy {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.info-copy strong {
+  color: var(--theme-primary);
+}
+
+/* =========================================================
+   FEATURE CHIPS
+========================================================= */
+
+.feature-chip {
+  min-width: 0;
+  background: var(--theme-background);
+  border: 1px solid var(--theme-border);
+  box-shadow:
+    inset 4px 4px 8px var(--theme-shadow-dark),
+    inset -3px -3px 7px var(--theme-shadow-light);
+  color: var(--theme-text-muted);
+  font-size: 10px;
+  transition:
+    color 0.25s ease,
+    border-color 0.25s ease,
+    background-color 0.35s ease,
+    transform 0.25s ease;
+}
+
+.feature-chip:hover {
+  color: var(--theme-primary);
+  border-color: var(--theme-primary);
+  transform: translateY(-2px);
+}
+
+/* =========================================================
+   CTA BUTTON
+========================================================= */
+
+.cta-btn {
+  background: var(--theme-gradient);
+  border: 1px solid var(--theme-border);
+  color: #ffffff;
+  box-shadow:
+    6px 6px 13px var(--theme-shadow-dark),
+    -4px -4px 9px var(--theme-shadow-light);
+  cursor: pointer;
+}
+
+.cta-btn:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    7px 9px 18px var(--theme-shadow-dark),
+    0 0 18px var(--theme-glow-primary);
+  filter: brightness(1.06);
+}
+
+.cta-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 5px 5px 10px var(--theme-shadow-dark),
+    inset -4px -4px 8px var(--theme-shadow-light);
+}
+
+.cta-btn:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 4px;
+}
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes profileCardFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes visualFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes imageFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes imageBreath {
+  0%, 100% { transform: scale(1.02); }
+  50% { transform: scale(1.045); }
+}
+
+@keyframes statusPulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.55; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+@keyframes circleGlow {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes floatingDot {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate3d(0, -9px, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes badgeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes highlightMove {
+  0% { left: -45%; }
+  55%, 100% { left: 120%; }
+}
+
+@keyframes aboutBackgroundGlow {
+  0%, 100% { transform: scale(0.95); opacity: 0.55; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes orbitClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbitCounterClockwise {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes purpleOrbitPulse {
+  0%, 100% {
+    opacity: 0.3;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 9px var(--theme-glow-primary));
+  }
+}
+
+@keyframes cyanOrbitPulse {
+  0%, 100% {
+    opacity: 0.25;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 9px var(--theme-glow-secondary));
+  }
+}
+
+@keyframes orbitDotPulse {
+  0%, 100% {
+    transform: translateX(-50%) scale(0.65);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateX(-50%) scale(1.35);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (min-width: 1500px) {
+  .neu-about {
+    padding-right: 8vw;
+    padding-left: 8vw;
+  }
+
+  .profile-visual {
+    width: 360px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .profile-visual {
+    width: min(320px, 100%);
+  }
+
+  .about-heading {
+    font-size: clamp(40px, 5vw, 62px);
+  }
+}
+
+@media (max-width: 900px) {
+  .neu-about {
+    min-height: auto;
+  }
+
+  .neu-about-inner {
+    max-width: 720px;
+  }
+
+  .neu-about-left {
+    order: 1;
+  }
+
+  .neu-about-right {
+    order: 2;
+  }
+
+  .about-heading {
+    font-size: clamp(42px, 8vw, 62px);
+  }
+}
+
+@media (max-width: 700px) {
+  .profile-card {
+    border-radius: 27px;
+  }
+
+  .profile-visual {
+    width: min(300px, 100%);
+    margin-top: 25px;
+  }
+
+  .about-heading {
+    font-size: clamp(38px, 9vw, 54px);
+    letter-spacing: -2.2px;
+  }
+}
+
+@media (max-width: 500px) {
+  .profile-card {
+    border-radius: 23px;
+  }
+
+  .profile-status {
+    font-size: 9px;
+    padding: 7px 11px;
+  }
+
+  .profile-visual {
+    width: min(270px, 100%);
+    margin: 22px auto 15px;
+  }
+
+  .profile-heading {
+    font-size: clamp(32px, 10vw, 42px);
+    letter-spacing: 1px;
+  }
+
+  .profile-stats {
+    gap: 7px;
+  }
+
+  .profile-stat-num {
+    font-size: 16px;
+  }
+
+  .profile-stat-label {
+    font-size: 8px;
+    letter-spacing: 0.6px;
+  }
+
+  .about-heading {
+    font-size: clamp(34px, 10vw, 46px);
+    letter-spacing: -1.8px;
+  }
+
+  .info-card {
+    border-radius: 20px;
+  }
+
+  .info-copy {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .feature-chip {
+    font-size: 9px;
+  }
+
+  .cta-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 390px) {
+  .profile-visual {
+    width: min(245px, 100%);
+  }
+
+  .profile-heading {
+    font-size: 31px;
+  }
+
+  .profile-stat-num {
+    font-size: 14px;
+  }
+
+  .profile-stat-label {
+    font-size: 7px;
+  }
+
+  .about-heading {
+    font-size: 32px;
+  }
+
+  .info-copy {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 340px) {
+  .profile-visual {
+    width: min(220px, 100%);
+  }
+
+  .profile-heading {
+    font-size: 28px;
+  }
+
+  .profile-stats {
+    gap: 4px;
+  }
+
+  .profile-stat-num {
+    font-size: 13px;
+  }
+
+  .profile-stat-label {
+    font-size: 6.5px;
+  }
+
+  .about-heading {
+    font-size: 29px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   TOUCH DEVICES
+========================================================= */
+
+@media (hover: none) and (pointer: coarse) {
+  .profile-photo-frame:hover .profile-photo-inner img {
+    transform: scale(1.02);
+  }
+
+  .feature-chip:hover,
+  .cta-btn:hover {
+    transform: none;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-card,
+  .profile-visual,
+  .profile-photo-frame,
+  .profile-photo-inner img,
+  .orbit-rotator,
+  .orbit-pulse,
+  .orbit-dot,
+  .circle-glow,
+  .floating-dot,
+  .profile-badge,
+  .profile-status-dot,
+  .photo-highlight,
+  .neu-about::before,
+  .neu-about::after,
+  .about-background-glow {
+    animation: none !important;
+  }
+
+  .profile-tilt {
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   SAFETY
+========================================================= */
+
+.neu-about *,
+.neu-about *::before,
+.neu-about *::after {
+  box-sizing: border-box;
+}
+
+.neu-about img {
+  max-width: 100%;
+}
+
+.neu-about button {
+  font-family: inherit;
+}

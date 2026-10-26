@@ -1,0 +1,760 @@
+/* =========================================================
+   LYRICS WAYYY — GLOBAL APP SHIMMER
+   Dark Neumorphic Music UI
+   ========================================================= */
+
+/* =========================================================
+   GLOBAL VARIABLES
+   ========================================================= */
+
+:root {
+  --app-shimmer-light: rgba(255, 255, 255, 0.075);
+  --app-shimmer-soft: rgba(255, 255, 255, 0.035);
+
+  --app-shimmer-primary: rgba(140, 124, 247, 0.10);
+  --app-shimmer-secondary: rgba(43, 212, 196, 0.08);
+
+  --app-shimmer-speed: 3.8s;
+}
+
+
+/* =========================================================
+   GLOBAL PAGE
+   ========================================================= */
+
+.app {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+
+/* =========================================================
+   PAGE SHIMMER
+   A very subtle light sweep across the complete website
+   ========================================================= */
+
+.app-shimmer {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-shimmer::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.05) 46%,
+    rgba(255, 255, 255, 0.025) 50%,
+    transparent 58%,
+    transparent 100%
+  );
+
+  background-size: 220% 220%;
+  animation: appGlobalShimmer 3.8s ease-in-out infinite;
+}
+
+@keyframes appGlobalShimmer {
+  0% {
+    background-position: 120% 0%;
+  }
+
+  50% {
+    background-position: 0% 100%;
+  }
+
+  100% {
+    background-position: -120% 0%;
+  }
+}
+
+
+/* =========================================================
+   UNIVERSAL SHIMMER
+   Add className="shimmer" to any element
+   ========================================================= */
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 20;
+
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255, 255, 255, 0.025) 43%,
+    rgba(255, 255, 255, 0.085) 50%,
+    rgba(255, 255, 255, 0.025) 57%,
+    transparent 65%,
+    transparent 100%
+  );
+
+  transform: translateX(-120%);
+
+  animation:
+    universalShimmer
+    var(--app-shimmer-speed)
+    ease-in-out
+    infinite;
+}
+
+@keyframes universalShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  50%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+
+/* =========================================================
+   NEUMORPHIC SHIMMER
+   Best for your cards / panels / sections
+   ========================================================= */
+
+.shimmer-neu {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer-neu::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 30;
+
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.015) 35%,
+    rgba(255, 255, 255, 0.075) 48%,
+    rgba(255, 255, 255, 0.035) 52%,
+    rgba(255, 255, 255, 0.015) 65%,
+    transparent 80%
+  );
+
+  transform: translateX(-120%);
+
+  animation:
+    neumorphicShimmer
+    4.5s
+    cubic-bezier(0.4, 0, 0.2, 1)
+    infinite;
+}
+
+@keyframes neumorphicShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+
+/* =========================================================
+   CARD SHIMMER
+   ========================================================= */
+
+.shimmer-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer-card::after {
+  content: "";
+
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -70%;
+
+  width: 45%;
+
+  pointer-events: none;
+
+  z-index: 10;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.025),
+    rgba(255, 255, 255, 0.085),
+    rgba(255, 255, 255, 0.025),
+    transparent
+  );
+
+  transform: skewX(-18deg);
+
+  animation:
+    cardShimmer
+    3.5s
+    ease-in-out
+    infinite;
+}
+
+@keyframes cardShimmer {
+  0% {
+    left: -70%;
+  }
+
+  55%,
+  100% {
+    left: 140%;
+  }
+}
+
+
+/* =========================================================
+   IMAGE SHIMMER
+   Album / Artist / Cover images
+   ========================================================= */
+
+.shimmer-image {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer-image::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 5;
+
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.025) 38%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.025) 62%,
+    transparent 80%
+  );
+
+  transform: translateX(-120%);
+
+  animation:
+    imageShimmer
+    3s
+    ease-in-out
+    infinite;
+}
+
+@keyframes imageShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  50%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+
+/* =========================================================
+   BUTTON SHIMMER
+   ========================================================= */
+
+.shimmer-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer-button::after {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  bottom: 0;
+  left: -80%;
+
+  width: 45%;
+
+  pointer-events: none;
+
+  z-index: 5;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.10),
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.10),
+    transparent
+  );
+
+  transform: skewX(-20deg);
+
+  animation:
+    buttonShimmer
+    3.2s
+    ease-in-out
+    infinite;
+}
+
+@keyframes buttonShimmer {
+  0% {
+    left: -80%;
+  }
+
+  55%,
+  100% {
+    left: 140%;
+  }
+}
+
+
+/* =========================================================
+   TEXT SHIMMER
+   ========================================================= */
+
+.shimmer-text {
+  position: relative;
+
+  background: linear-gradient(
+    110deg,
+    currentColor 30%,
+    rgba(255, 255, 255, 0.75) 50%,
+    currentColor 70%
+  );
+
+  background-size: 250% 100%;
+
+  background-clip: text;
+  -webkit-background-clip: text;
+
+  color: transparent;
+
+  animation:
+    textShimmer
+    2.8s
+    linear
+    infinite;
+}
+
+@keyframes textShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+
+/* =========================================================
+   PURPLE + TEAL MUSIC SHIMMER
+   Matches your LYRICS WAYYY colors
+   ========================================================= */
+
+.music-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.music-shimmer::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 25;
+
+  background: linear-gradient(
+    110deg,
+    transparent 15%,
+    transparent 35%,
+    var(--app-shimmer-primary) 44%,
+    rgba(255, 255, 255, 0.08) 50%,
+    var(--app-shimmer-secondary) 56%,
+    transparent 65%,
+    transparent 85%
+  );
+
+  transform: translateX(-120%);
+
+  animation:
+    musicShimmer
+    4s
+    cubic-bezier(0.4, 0, 0.2, 1)
+    infinite;
+}
+
+@keyframes musicShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+
+/* =========================================================
+   SKELETON SHIMMER
+   For loading states
+   ========================================================= */
+
+.shimmer-skeleton {
+  position: relative;
+  overflow: hidden;
+
+  background:
+    var(--theme-background, #252933);
+}
+
+.shimmer-skeleton::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.025) 35%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.025) 65%,
+    transparent 100%
+  );
+
+  transform: translateX(-100%);
+
+  animation:
+    skeletonShimmer
+    1.8s
+    linear
+    infinite;
+}
+
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+
+/* =========================================================
+   NAVBAR SHIMMER
+   ========================================================= */
+
+.shimmer-navbar {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer-navbar::after {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  bottom: 0;
+  left: -50%;
+
+  width: 30%;
+
+  pointer-events: none;
+
+  z-index: 100;
+
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.045),
+    transparent
+  );
+
+  transform: skewX(-15deg);
+
+  animation:
+    navbarShimmer
+    5s
+    ease-in-out
+    infinite;
+}
+
+@keyframes navbarShimmer {
+  0% {
+    left: -50%;
+  }
+
+  50%,
+  100% {
+    left: 130%;
+  }
+}
+
+
+/* =========================================================
+   MUSIC PLAYER SHIMMER
+   ========================================================= */
+
+.shimmer-player {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shimmer-player::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 100;
+
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgba(140, 124, 247, 0.035) 40%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(43, 212, 196, 0.035) 60%,
+    transparent 75%
+  );
+
+  transform: translateX(-120%);
+
+  animation:
+    playerShimmer
+    5s
+    ease-in-out
+    infinite;
+}
+
+@keyframes playerShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+
+/* =========================================================
+   INPUT SHIMMER
+   ========================================================= */
+
+.shimmer-input {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-input:focus-within {
+  box-shadow:
+    0 0 0 1px var(--theme-primary),
+    5px 5px 12px var(--theme-shadowDark),
+    -5px -5px 12px var(--theme-shadowLight);
+}
+
+
+/* =========================================================
+   HOVER SHIMMER
+   Shimmer appears when hovering
+   ========================================================= */
+
+.hover-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hover-shimmer::after {
+  content: "";
+
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -100%;
+
+  width: 50%;
+
+  pointer-events: none;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.10),
+    transparent
+  );
+
+  transform: skewX(-20deg);
+
+  transition: left 0.1s ease;
+}
+
+.hover-shimmer:hover::after {
+  left: 150%;
+  transition: left 0.7s ease;
+}
+
+/* =========================================
+   LYRICS WAYYY — NEUMORPHIC MUSIC VISUALIZER
+========================================= */
+
+.lw-visualizer {
+  width: 90%;
+  max-width: 440px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.lw-visualizer-bar {
+  flex: 1;
+  max-width: 6px;
+  min-width: 2px;
+  height: var(--bar-height);
+  border-radius: 999px;
+
+  background: linear-gradient(
+    to top,
+    var(--theme-primary, #8c7cf7),
+    var(--theme-secondary, #2bd4c4)
+  );
+
+  opacity: 0.8;
+
+  box-shadow: 0 0 7px
+    color-mix(
+      in srgb,
+      var(--theme-primary, #8c7cf7) 35%,
+      transparent
+    );
+
+  transform-origin: center;
+}
+
+.lw-visualizer-playing .lw-visualizer-bar {
+  animation: lwSoundWave 700ms ease-in-out infinite alternate;
+  animation-delay: calc(var(--bar-index) * -35ms);
+}
+
+.lw-visualizer-paused .lw-visualizer-bar {
+  animation-play-state: paused;
+  opacity: 0.45;
+}
+
+@keyframes lwSoundWave {
+  0% {
+    transform: scaleY(0.2);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: scaleY(0.65);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lw-visualizer-playing .lw-visualizer-bar {
+    animation: none;
+  }
+}
+
+/* =========================================================
+   DISABLE SHIMMER WHEN NECESSARY
+   ========================================================= */
+
+.no-shimmer::before,
+.no-shimmer::after {
+  display: none !important;
+}
+
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shimmer::before,
+  .shimmer::after,
+  .shimmer-neu::after,
+  .shimmer-card::after,
+  .shimmer-image::after,
+  .shimmer-button::after,
+  .shimmer-text,
+  .music-shimmer::after,
+  .shimmer-skeleton::after,
+  .shimmer-navbar::after,
+  .shimmer-player::after {
+    animation: none !important;
+  }
+}
+
+
+/* =========================================================
+   MOBILE PERFORMANCE
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .app-shimmer::before {
+    opacity: 0.55;
+  }
+
+  .shimmer-neu::after,
+  .shimmer-card::after,
+  .music-shimmer::after {
+    opacity: 0.75;
+  }
+}
+

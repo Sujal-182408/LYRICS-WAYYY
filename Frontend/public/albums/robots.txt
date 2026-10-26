@@ -1,0 +1,10 @@
+
+ id="gk5z1q"
+User-agent: *
+Allow: /
+
+Disallow: /signin
+Disallow: /signup
+Disallow: /profile
+Disallow: /admin/
+Disallow: /api/

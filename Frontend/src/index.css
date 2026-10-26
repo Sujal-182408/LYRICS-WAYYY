@@ -1,0 +1,980 @@
+/* =========================================================
+   TAILWIND
+========================================================= */
+
+@import "tailwindcss";
+
+/* =========================================================
+   PROJECT STYLES
+========================================================= */
+
+@import "./CSS/Contact.css";
+@import "./CSS/Footer.css";
+@import "./CSS/Production.css";
+@import "./CSS/Hero.css";
+@import "./CSS/About.css";
+
+/* =========================================================
+   ROOT — DEFAULT THEME
+========================================================= */
+
+:root {
+  /* -------------------------------------------------------
+     NEUMORPHISM
+  ------------------------------------------------------- */
+
+  --neu-bg: #15181d;
+  --neu-text: #d9dce8;
+  --neu-text-muted: #858b9a;
+  --neu-shadow-dark: #0f141a;
+  --neu-shadow-light: #2a3543;
+  --neu-accent-1: #8c7cf7;
+  --neu-accent-2: #2bd4c4;
+  --neu-danger: #ff6b6b;
+
+  /* -------------------------------------------------------
+     THEME COLORS
+  ------------------------------------------------------- */
+
+  --theme-background: #15181d;
+  --theme-surface: #252933;
+  --theme-surface-light: #2a3543;
+
+  --theme-shadow-dark: #0f141a;
+  --theme-shadow-light: #2a3543;
+
+  --theme-primary: #8c7cf7;
+  --theme-secondary: #2bd4c4;
+
+  --theme-text: #d9dce8;
+  --theme-text-muted: #858b9a;
+  --theme-text-dark: #15181d;
+
+  --theme-border: rgba(255, 255, 255, 0.04);
+
+  --theme-hover: #303647;
+  --theme-active: #343b4d;
+
+  --theme-success: #2bd4c4;
+  --theme-danger: #ff6b6b;
+  --theme-warning: #f5b942;
+  --theme-info: #6ea8fe;
+
+  --theme-overlay: rgba(15, 20, 26, 0.72);
+
+  /* -------------------------------------------------------
+     GLOW COLORS
+  ------------------------------------------------------- */
+
+  --theme-glow-primary: rgba(140, 124, 247, 0.35);
+  --theme-glow-secondary: rgba(43, 212, 196, 0.3);
+
+  /* -------------------------------------------------------
+     THEME GRADIENT
+  ------------------------------------------------------- */
+
+  --theme-gradient: linear-gradient(
+    135deg,
+    #8c7cf7 0%,
+    #665de8 45%,
+    #2bd4c4 100%
+  );
+
+  /* -------------------------------------------------------
+     COMPATIBILITY VARIABLES
+  ------------------------------------------------------- */
+
+  --glass-bg: #252933;
+  --glass-border: rgba(255, 255, 255, 0.04);
+
+  --theme-surfaceLight: var(--theme-surface-light);
+  --theme-textMuted: var(--theme-text-muted);
+  --theme-textDark: var(--theme-text-dark);
+
+  --theme-shadowDark: var(--theme-shadow-dark);
+  --theme-shadowLight: var(--theme-shadow-light);
+
+  --theme-glowPrimary: var(--theme-glow-primary);
+  --theme-glowSecondary: var(--theme-glow-secondary);
+
+
+
+/* ==========================================
+   GLOBAL THEME GRADIENT TEXT
+========================================== */
+
+:root {
+  --theme-text-gradient: var(--theme-gradient);
+}
+
+/* Reusable gradient text */
+.theme-gradient-text {
+  background: var(--theme-text-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Gradient headings */
+.theme-gradient-heading {
+  background: var(--theme-text-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+
+/* Hide the Artist Sidebar scrollbar while preserving scrolling */
+.artist-sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.artist-sidebar-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Smooth desktop sidebar expansion and collapse */
+.artist-sidebar {
+  transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: width;
+}
+
+/* Keep layout elements from abruptly resizing */
+.artist-sidebar > nav,
+.artist-sidebar > div {
+  min-width: 0;
+}
+
+/* Smooth logo and navigation-label transitions */
+.artist-sidebar .sidebar-animated-content {
+  transition:
+    opacity 300ms ease,
+    transform 400ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artist-sidebar,
+  .artist-sidebar .sidebar-animated-content {
+    transition: none;
+  }
+}
+
+  /* -------------------------------------------------------
+     CURSOR SPOTLIGHT
+  ------------------------------------------------------- */
+
+  --spot-x: 50%;
+  --spot-y: 20%;
+}
+
+/* =========================================================
+   GLOBAL RESET
+========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   HTML
+========================================================= */
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================================================
+   BODY
+========================================================= */
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+
+  background: var(--theme-background);
+  color: var(--theme-text);
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  overflow-x: hidden;
+
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+
+/* =========================================================
+   FORM ELEMENT FONTS
+========================================================= */
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+/* =========================================================
+   HEADINGS
+========================================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  margin-top: 0;
+  font-weight: 700;
+}
+
+/* =========================================================
+   LINKS
+========================================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* =========================================================
+   IMAGES
+========================================================= */
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* =========================================================
+   APP ROOT
+========================================================= */
+
+#root {
+  min-height: 100vh;
+  background: var(--theme-background);
+  color: var(--theme-text);
+}
+
+/* =========================================================
+   APP CONTAINER
+========================================================= */
+
+.app {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+
+  background: var(--theme-background);
+  color: var(--theme-text);
+}
+
+/* =========================================================
+   GLOBAL CURSOR SPOTLIGHT
+========================================================= */
+
+.global-spotlight {
+  position: fixed;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 9999;
+
+  background: radial-gradient(
+    450px circle at var(--spot-x, 50%) var(--spot-y, 20%),
+    rgba(255, 255, 255, 0.075),
+    transparent 60%
+  );
+
+  transition: background 0.08s ease;
+  will-change: background;
+}
+
+/* =========================================================
+   GLOBAL NEUMORPHIC CARD
+========================================================= */
+
+.neu-card {
+  background: var(--theme-surface);
+  color: var(--theme-text);
+
+  border: 1px solid var(--theme-border);
+  border-radius: 30px;
+
+  box-shadow:
+    15px 15px 30px var(--theme-shadow-dark),
+    -15px -15px 30px var(--theme-shadow-light);
+
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    color 0.35s ease,
+    transform 0.35s ease;
+}
+
+/* =========================================================
+   NEUMORPHIC CARD HOVER
+========================================================= */
+
+.neu-card-hover:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    18px 18px 36px var(--theme-shadow-dark),
+    -10px -10px 25px var(--theme-shadow-light),
+    0 0 18px var(--theme-glow-primary);
+}
+
+/* =========================================================
+   PRESSED NEUMORPHIC
+========================================================= */
+
+.neu-pressed {
+  background: var(--theme-surface);
+  color: var(--theme-text);
+
+  border: 1px solid var(--theme-border);
+
+  box-shadow:
+    inset 7px 7px 15px var(--theme-shadow-dark),
+    inset -7px -7px 15px var(--theme-shadow-light);
+}
+
+/* =========================================================
+   SMALL NEUMORPHIC
+========================================================= */
+
+.neu-small {
+  background: var(--theme-surface);
+  color: var(--theme-text);
+
+  border: 1px solid var(--theme-border);
+
+  box-shadow:
+    5px 5px 10px var(--theme-shadow-dark),
+    -5px -5px 10px var(--theme-shadow-light);
+}
+
+/* =========================================================
+   GLASS COMPATIBILITY
+========================================================= */
+
+.glass {
+  background: var(--glass-bg);
+  color: var(--theme-text);
+
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  border: 1px solid var(--glass-border);
+
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease;
+}
+
+/* =========================================================
+   GRADIENT TEXT
+   Use for headings, labels, links, and highlighted text.
+========================================================= */
+
+.gradient-text {
+  display: inline-block;
+
+  background: var(--theme-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* =========================================================
+   GRADIENT TEXT HOVER
+========================================================= */
+
+.gradient-text-hover {
+  transition: filter 0.3s ease;
+}
+
+.gradient-text-hover:hover {
+  filter: brightness(1.2);
+}
+
+/* =========================================================
+   THEME TEXT UTILITIES
+========================================================= */
+
+.theme-text {
+  color: var(--theme-text);
+}
+
+.theme-muted {
+  color: var(--theme-text-muted);
+}
+
+.theme-primary {
+  color: var(--theme-primary);
+}
+
+.theme-secondary {
+  color: var(--theme-secondary);
+}
+
+.theme-success {
+  color: var(--theme-success);
+}
+
+.theme-danger {
+  color: var(--theme-danger);
+}
+
+.theme-warning {
+  color: var(--theme-warning);
+}
+
+.theme-info {
+  color: var(--theme-info);
+}
+
+/* =========================================================
+   NEUMORPHIC GRADIENT PRIMARY BUTTON
+========================================================= */
+
+.neu-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 15px 30px;
+
+  border: 1px solid var(--theme-border);
+  border-radius: 18px;
+
+  background: var(--theme-gradient);
+  color: #ffffff;
+
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+
+  cursor: pointer;
+  user-select: none;
+
+  box-shadow:
+    8px 8px 18px var(--theme-shadow-dark),
+    -5px -5px 12px var(--theme-shadow-light),
+    0 0 15px var(--theme-glow-primary);
+
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    filter 0.3s ease,
+    opacity 0.3s ease;
+}
+
+/* =========================================================
+   PRIMARY BUTTON HOVER
+========================================================= */
+
+.neu-primary-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+
+  box-shadow:
+    10px 10px 22px var(--theme-shadow-dark),
+    -6px -6px 14px var(--theme-shadow-light),
+    0 0 22px var(--theme-glow-primary);
+
+  filter: brightness(1.08);
+}
+
+/* =========================================================
+   PRIMARY BUTTON ACTIVE
+========================================================= */
+
+.neu-primary-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+
+  box-shadow:
+    inset 4px 4px 8px rgba(0, 0, 0, 0.2),
+    0 0 10px var(--theme-glow-primary);
+}
+
+/* =========================================================
+   PRIMARY BUTTON FOCUS
+========================================================= */
+
+.neu-primary-btn:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 4px;
+}
+
+/* =========================================================
+   PRIMARY BUTTON DISABLED
+========================================================= */
+
+.neu-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(0.4);
+  box-shadow: none;
+}
+
+/* =========================================================
+   NEUMORPHIC SECONDARY BUTTON
+   Surface background with theme-colored text.
+========================================================= */
+
+.neu-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 12px 24px;
+
+  border: 1px solid var(--theme-border);
+  border-radius: 16px;
+
+  background: var(--theme-surface);
+  color: var(--theme-primary);
+
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+
+  cursor: pointer;
+
+  box-shadow:
+    6px 6px 12px var(--theme-shadow-dark),
+    -6px -6px 12px var(--theme-shadow-light);
+
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+/* =========================================================
+   SECONDARY BUTTON HOVER
+========================================================= */
+
+.neu-secondary-btn:hover:not(:disabled) {
+  color: var(--theme-secondary);
+  background: var(--theme-surface-light);
+
+  box-shadow:
+    0 0 15px var(--theme-glow-primary),
+    6px 6px 12px var(--theme-shadow-dark);
+
+  transform: translateY(-2px);
+}
+
+/* =========================================================
+   SECONDARY BUTTON ACTIVE
+========================================================= */
+
+.neu-secondary-btn:active:not(:disabled) {
+  transform: scale(0.98);
+
+  box-shadow:
+    inset 4px 4px 8px var(--theme-shadow-dark),
+    inset -3px -3px 7px var(--theme-shadow-light);
+}
+
+.neu-secondary-btn:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 4px;
+}
+
+.neu-secondary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* =========================================================
+   GRADIENT TEXT BUTTON
+   Neumorphic surface with gradient-colored text.
+========================================================= */
+
+.neu-gradient-text-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 12px 24px;
+
+  border: 1px solid var(--theme-border);
+  border-radius: 16px;
+
+  background: var(--theme-surface);
+
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+
+  cursor: pointer;
+
+  box-shadow:
+    6px 6px 12px var(--theme-shadow-dark),
+    -6px -6px 12px var(--theme-shadow-light);
+
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+.neu-gradient-text-btn > span {
+  background: var(--theme-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.neu-gradient-text-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 0 18px var(--theme-glow-primary),
+    6px 6px 12px var(--theme-shadow-dark);
+}
+
+.neu-gradient-text-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.neu-gradient-text-btn:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 4px;
+}
+
+.neu-gradient-text-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* =========================================================
+   GLOBAL INPUTS
+========================================================= */
+
+input,
+textarea,
+select {
+  color: var(--theme-text);
+  background: var(--theme-surface);
+
+  border-color: var(--theme-border);
+
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* =========================================================
+   INPUT PLACEHOLDERS
+========================================================= */
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--theme-text-muted);
+  opacity: 1;
+}
+
+/* =========================================================
+   INPUT FOCUS
+========================================================= */
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+
+  border-color: var(--theme-primary);
+
+  box-shadow:
+    0 0 0 2px var(--theme-glow-primary);
+}
+
+/* =========================================================
+   SECTION
+========================================================= */
+
+section {
+  position: relative;
+
+  background: var(--theme-background);
+  color: var(--theme-text);
+
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+
+/* =========================================================
+   THEME-AWARE BACKGROUND
+========================================================= */
+
+.theme-background {
+  background: var(--theme-background);
+  color: var(--theme-text);
+}
+
+.theme-surface {
+  background: var(--theme-surface);
+  color: var(--theme-text);
+}
+
+.theme-surface-light {
+  background: var(--theme-surface-light);
+  color: var(--theme-text);
+}
+
+/* =========================================================
+   THEME GRADIENT BACKGROUND
+========================================================= */
+
+.theme-gradient-bg {
+  background: var(--theme-gradient);
+  color: #ffffff;
+}
+
+/* =========================================================
+   THEME GRADIENT GLOW
+========================================================= */
+
+.theme-gradient-glow {
+  box-shadow:
+    0 0 15px var(--theme-glow-primary),
+    0 0 30px var(--theme-glow-secondary);
+}
+
+/* =========================================================
+   PAGE OPEN ANIMATION
+========================================================= */
+
+.page-enter {
+  animation: pageOpen 0.5s ease forwards;
+}
+
+@keyframes pageOpen {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   WAVE SCROLLBAR
+========================================================= */
+
+.wave-scrollbar {
+  position: fixed;
+  right: 8px;
+
+  width: 7px;
+  height: 70px;
+
+  border-radius: 20px;
+
+  background: var(--theme-gradient);
+
+  transform: translateY(-50%);
+
+  z-index: 9999;
+  pointer-events: none;
+
+  box-shadow:
+    0 0 8px var(--theme-glow-secondary),
+    0 0 18px var(--theme-glow-primary);
+
+  animation: scrollbarWave 1.2s ease-in-out infinite alternate;
+
+  transition:
+    background 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+/* =========================================================
+   WAVE SCROLLBAR ANIMATION
+========================================================= */
+
+@keyframes scrollbarWave {
+  from {
+    transform: translateY(-50%) scaleY(0.85);
+  }
+
+  to {
+    transform: translateY(-50%) scaleY(1.15);
+  }
+}
+
+/* =========================================================
+   NEUMORPHIC DROP IN
+========================================================= */
+
+@keyframes neu-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-25px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   EQUALIZER BOUNCE
+========================================================= */
+
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* =========================================================
+   MENU DROP
+========================================================= */
+
+@keyframes menuDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   THEME TRANSITIONS
+========================================================= */
+
+body,
+.app,
+section,
+nav,
+header,
+main,
+footer,
+aside,
+article,
+button,
+input,
+textarea,
+select,
+.neu-card,
+.glass {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+/* Preserve specific button transforms and filters. */
+
+.neu-primary-btn,
+.neu-secondary-btn,
+.neu-gradient-text-btn {
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    filter 0.3s ease;
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

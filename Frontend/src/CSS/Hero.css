@@ -1,0 +1,672 @@
+:root {
+  --neu-bg: #121418;
+  --neu-text: #eef0f6;
+  --neu-text-muted: #8790a8;
+
+  --neu-shadow-dark: rgba(0, 0, 0, 0.55);
+  --neu-shadow-light: rgba(255, 255, 255, 0.05);
+
+  --neu-accent-1: #8c7cf7;
+  --neu-accent-2: #2bd4c4;
+}
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.neu-hero {
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 96px 32px;
+
+  overflow: hidden;
+
+  background: var(--neu-bg);
+
+  position: relative;
+}
+
+/* =========================================================
+   HERO SPOTLIGHT
+========================================================= */
+
+.neu-hero-spotlight {
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background: radial-gradient(
+    420px circle at var(--spot-x, 50%) var(--spot-y, 40%),
+    rgba(255, 255, 255, 0.05),
+    transparent 70%
+  );
+
+  transition: background 0.15s ease;
+
+  will-change: background;
+}
+
+/* =========================================================
+   HERO INNER
+========================================================= */
+
+.neu-hero-inner {
+  position: relative;
+
+  z-index: 1;
+
+  width: 100%;
+  max-width: 1240px;
+
+  display: grid;
+
+  grid-template-columns: 1fr;
+
+  gap: 64px;
+
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .neu-hero-inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+  }
+}
+
+/* =========================================================
+   LEFT CONTENT
+========================================================= */
+
+.neu-hero-left {
+  animation: neu-fade-in-left 0.8s ease both;
+}
+
+@keyframes neu-fade-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* =========================================================
+   BADGE
+========================================================= */
+
+.neu-badge {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 8px 16px;
+
+  border-radius: 20px;
+
+  background: var(--neu-bg);
+
+  box-shadow:
+    5px 5px 10px var(--neu-shadow-dark),
+    -5px -5px 10px var(--neu-shadow-light);
+
+  font-size: 11px;
+
+  font-weight: 600;
+
+  letter-spacing: 0.25em;
+
+  color: var(--neu-text-muted);
+}
+
+.neu-badge-dot {
+  width: 7px;
+  height: 7px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: var(--neu-accent-2);
+
+  animation: neu-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes neu-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* =========================================================
+   HERO HEADING
+========================================================= */
+
+.neu-hero-heading {
+  margin: 28px 0 20px;
+
+  font-family: "Sora", sans-serif;
+
+  font-weight: 800;
+
+  font-size: clamp(40px, 6vw, 76px);
+
+  line-height: 1.02;
+
+  letter-spacing: -0.01em;
+
+  color: var(--neu-text);
+
+  /*
+    Keep the heading visible immediately.
+    This is the LCP element identified by Lighthouse.
+  */
+  opacity: 1;
+}
+
+.neu-hero-heading span {
+  background: linear-gradient(
+    120deg,
+    var(--neu-accent-2),
+    var(--neu-accent-1)
+  );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  color: transparent;
+}
+
+/* =========================================================
+   HERO COPY
+========================================================= */
+
+.neu-hero-copy {
+  max-width: 460px;
+
+  font-size: 16px;
+
+  line-height: 1.7;
+
+  color: var(--neu-text-muted);
+}
+
+/* =========================================================
+   HERO ACTIONS
+========================================================= */
+
+.neu-hero-actions {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 16px;
+
+  margin-top: 40px;
+}
+
+/* =========================================================
+   PRIMARY CTA
+========================================================= */
+
+.neu-cta-primary {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  border: none;
+
+  padding: 15px 28px;
+
+  border-radius: 18px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #10121a;
+
+  background: linear-gradient(
+    135deg,
+    var(--neu-accent-2),
+    var(--neu-accent-1)
+  );
+
+  box-shadow:
+    6px 6px 14px rgba(0, 0, 0, 0.45),
+    -5px -5px 12px var(--neu-shadow-light);
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.neu-cta-primary:hover {
+  transform: translateY(-3px);
+}
+
+.neu-cta-primary:active {
+  transform: translateY(0);
+
+  box-shadow:
+    inset 4px 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* =========================================================
+   SECONDARY CTA
+========================================================= */
+
+.neu-cta-secondary {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  border: none;
+
+  padding: 15px 28px;
+
+  border-radius: 18px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: var(--neu-text);
+
+  background: var(--neu-bg);
+
+  box-shadow:
+    6px 6px 14px var(--neu-shadow-dark),
+    -6px -6px 14px var(--neu-shadow-light);
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.neu-cta-secondary:hover {
+  transform: translateY(-3px);
+
+  color: var(--neu-accent-2);
+}
+
+.neu-cta-secondary:active {
+  transform: translateY(0);
+
+  box-shadow:
+    inset 4px 4px 10px var(--neu-shadow-dark),
+    inset -4px -4px 10px var(--neu-shadow-light);
+}
+
+/* =========================================================
+   RIGHT / VINYL STAGE
+========================================================= */
+
+.neu-hero-right {
+  display: flex;
+
+  justify-content: center;
+
+  animation: neu-fade-in-scale 0.9s ease both;
+
+  animation-delay: 0.1s;
+}
+
+@keyframes neu-fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   VINYL STAGE
+========================================================= */
+
+.vinyl-stage {
+  position: relative;
+
+  width: 420px;
+  height: 420px;
+
+  max-width: 90vw;
+  max-height: 90vw;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================
+   VINYL TILT
+========================================================= */
+
+.vinyl-tilt {
+  width: 340px;
+  height: 340px;
+
+  border-radius: 50%;
+
+  transition: transform 0.15s ease-out;
+
+  transform-style: preserve-3d;
+
+  perspective: 1000px;
+}
+
+/* =========================================================
+   VINYL DISC
+========================================================= */
+
+.vinyl-disc {
+  width: 100%;
+  height: 100%;
+
+  border-radius: 50%;
+
+  position: relative;
+
+  background: var(--neu-bg);
+
+  box-shadow:
+    20px 20px 40px var(--neu-shadow-dark),
+    -20px -20px 40px var(--neu-shadow-light);
+
+  animation: vinylSpin 8s linear infinite;
+
+  transform-style: preserve-3d;
+
+  will-change: transform;
+}
+
+@keyframes vinylSpin {
+  from {
+    transform: rotateZ(0deg);
+  }
+
+  to {
+    transform: rotateZ(360deg);
+  }
+}
+
+@keyframes neu-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   VINYL GROOVES
+========================================================= */
+
+.groove {
+  position: absolute;
+
+  border-radius: 50%;
+
+  border: 1px solid var(--neu-shadow-light);
+
+  box-shadow:
+    inset 2px 2px 4px var(--neu-shadow-dark);
+}
+
+/* =========================================================
+   VINYL EMBLEM
+========================================================= */
+
+.vinyl-emblem {
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  transform: translate(-50%, -50%);
+
+  width: 96px;
+  height: 96px;
+
+  border-radius: 50%;
+
+  background: var(--neu-bg);
+
+  box-shadow:
+    inset 5px 5px 10px var(--neu-shadow-dark),
+    inset -5px -5px 10px var(--neu-shadow-light);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+}
+
+.vinyl-emblem-core {
+  width: 60px;
+  height: 60px;
+
+  border-radius: 50%;
+
+  background: linear-gradient(
+    135deg,
+    var(--neu-accent-2),
+    var(--neu-accent-1)
+  );
+
+  box-shadow:
+    3px 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* =========================================================
+   FLOATING ALBUM CARDS
+========================================================= */
+
+.album-card {
+  position: absolute;
+
+  z-index: 3;
+
+  width: 108px;
+
+  border-radius: 16px;
+
+  overflow: hidden;
+
+  background: var(--neu-bg);
+
+  box-shadow:
+    8px 8px 16px var(--neu-shadow-dark),
+    -8px -8px 16px var(--neu-shadow-light);
+
+  animation: neu-float 6s ease-in-out infinite;
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+
+  cursor: pointer;
+}
+
+.album-card:hover {
+  transform: scale(1.08) rotate(0deg) !important;
+
+  box-shadow:
+    10px 10px 20px var(--neu-shadow-dark),
+    -10px -10px 20px var(--neu-shadow-light);
+}
+
+@keyframes neu-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+
+  50% {
+    transform: translateY(-14px) rotate(var(--rot, 0deg));
+  }
+}
+
+/* =========================================================
+   ALBUM IMAGE
+========================================================= */
+
+.album-card img {
+  width: 100%;
+
+  aspect-ratio: 1 / 1;
+
+  object-fit: cover;
+
+  display: block;
+
+  /*
+    Prevent image decoding from affecting surrounding layout.
+  */
+  contain: layout paint;
+}
+
+/* =========================================================
+   ALBUM INFO
+========================================================= */
+
+.album-card-info {
+  padding: 8px 10px;
+}
+
+.album-card-title {
+  font-size: 11px;
+
+  font-weight: 600;
+
+  color: var(--neu-text);
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+.album-card-artist {
+  font-size: 10px;
+
+  color: var(--neu-accent-2);
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+/* =========================================================
+   EQUALIZER
+========================================================= */
+
+.neu-eq {
+  position: absolute;
+
+  right: 24px;
+
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  display: flex;
+
+  align-items: flex-end;
+
+  gap: 6px;
+
+  z-index: 1;
+}
+
+.neu-eq span {
+  width: 8px;
+
+  border-radius: 6px;
+
+  background: linear-gradient(
+    180deg,
+    var(--neu-accent-2),
+    var(--neu-accent-1)
+  );
+
+  box-shadow:
+    3px 3px 6px var(--neu-shadow-dark),
+    -2px -2px 5px var(--neu-shadow-light);
+
+  animation: neu-eq-bounce ease-in-out infinite;
+}
+
+@keyframes neu-eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* =========================================================
+   TABLET / MOBILE
+========================================================= */
+
+@media (max-width: 1023px) {
+  .neu-eq {
+    display: none;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .neu-hero-left,
+  .neu-hero-right,
+  .vinyl-disc,
+  .album-card,
+  .neu-badge-dot,
+  .neu-eq span {
+    animation: none;
+  }
+
+  .neu-hero-heading {
+    opacity: 1;
+  }
+}
