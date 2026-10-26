@@ -5,8 +5,7 @@ import axios from "axios";
 // BACKEND BASE URL
 // =====================================================
 
-export const BASE_URL = 
-"https://barbie-title-capable-testament.trycloudflare.com";
+export const BASE_URL = "https://lyrics-wayyy-backend.onrender.com";
 // =====================================================
 // API BASE URL
 // =====================================================
