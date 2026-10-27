@@ -1120,72 +1120,64 @@ const handleSubmit = async (e) => {
 
                 {/* LOGIN BUTTON */}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                 className="
-                  w-full
-                  h-13
-                  rounded-2xl
-                  flex
-                  items-center
-                  justify-center
-                  gap-2
-                  text-sm
-                  font-semibold
-                  text-gray-300
-                  transition-all
-                  duration-200
-                  hover:text-white
-                  active:scale-[0.98]
-                "
-                style={{
-                  background: "#8c7cf7",
+               <button
+  type="submit"
+  disabled={loading}
+  className="
+    relative
+    group
+    overflow-hidden
+    w-full
+    h-13
+    rounded-2xl
+    flex
+    items-center
+    justify-center
+    gap-2
+    text-sm
+    font-semibold
+    text-white
+    transition-all
+    duration-200
+    hover:brightness-110
+    active:scale-[0.98]
+  "
+  style={{
+    background: "#8c7cf7",
+    boxShadow: "7px 7px 14px #0f141a, -7px -7px 14px #2a3543",
+  }}
+>
+  {/* Hover effect — must not intercept clicks */}
+  <span
+    className="
+      pointer-events-none
+      absolute
+      inset-0
+      opacity-0
+      group-hover:opacity-100
+      transition-opacity
+    "
+    style={{
+      background:
+        "linear-gradient(90deg, rgba(255,255,255,0.10), transparent, rgba(255,255,255,0.10))",
+    }}
+  />
 
-                  boxShadow:
-                    "7px 7px 14px #0f141a,-7px -7px 14px #2a3543",
-                }}
-                >
-                  <span
-                    className="
-                      absolute
-                      inset-0
-                      opacity-0
-                      group-hover:opacity-100
-                      transition-opacity
-                    "
-                    style={{
-                      background:
-                        "linear-gradient(90deg, rgba(255,255,255,0.10), transparent, rgba(255,255,255,0.10))",
-                       
-                    
-                    }}
-                  />
-
-                  {loading ? (
-                    <>
-                      <Loader2
-                        size={19}
-                        className="animate-spin"
-                      />
-
-                      Signing in...
-                    </>
-                  ) : (
-                    <>
-                      Sign in
-
-                      <ArrowRight
-                        size={18}
-                        className="
-                          transition-transform
-                          duration-200
-                          group-hover:translate-x-1
-                        "
-                      />
-                    </>
-                  )}
-                </button>
+  {/* Centered button content */}
+  <span className="relative z-10 flex items-center justify-center gap-2">
+    {loading ? (
+      <>
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Signing in...
+      </>
+    ) : (
+      <>
+        Sign in
+        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+      </>
+    )}
+  </span>
+</button>
               </form>
 
               {/* DIVIDER */}

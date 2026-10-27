@@ -1263,36 +1263,33 @@ const Signup = () => {
                       }}
                     />
 
-                    <input
-                      type={
-                        showPassword
-                          ? "text"
-                          : "password"
-                      }
-                      name="password"
-                      value={
-                        formData.password
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      placeholder="Create a password"
-                      autoComplete="new-password"
-                      disabled={loading}
-                      className="
-                        w-full
-                        h-14
-                        rounded-2xl
-                        bg-transparent
-                        pl-12
-                        pr-12
-                        text-sm
-                        text-white
-                        placeholder:text-gray-600
-                        outline-none
-                        disabled:opacity-50
-                      "
-                    />
+                 <input
+  type={showPassword ? "text" : "password"}
+  name="password"
+  value={formData.password}
+  onChange={handleChange}
+  placeholder="Create a password"
+  autoComplete="new-password"
+  disabled={loading}
+  className="
+    w-full
+    h-14
+    rounded-2xl
+    bg-transparent
+    pl-12
+    pr-12
+    text-sm
+    text-white
+    placeholder:text-gray-600
+    outline-none
+    disabled:opacity-50
+  "
+  style={{
+    background: BASE,
+    boxShadow:
+      "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
+  }}
+/>
 
                     <button
                       type="button"
@@ -1466,36 +1463,33 @@ const Signup = () => {
                       }}
                     />
 
-                    <input
-                      type={
-                        showConfirmPassword
-                          ? "text"
-                          : "password"
-                      }
-                      name="confirmPassword"
-                      value={
-                        formData.confirmPassword
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      placeholder="Confirm your password"
-                      autoComplete="new-password"
-                      disabled={loading}
-                      className="
-                        w-full
-                        h-14
-                        rounded-2xl
-                        bg-transparent
-                        pl-12
-                        pr-12
-                        text-sm
-                        text-white
-                        placeholder:text-gray-600
-                        outline-none
-                        disabled:opacity-50
-                      "
-                    />
+                  <input
+  type={showConfirmPassword ? "text" : "password"}
+  name="confirmPassword"
+  value={formData.confirmPassword}
+  onChange={handleChange}
+  placeholder="Confirm your password"
+  autoComplete="new-password"
+  disabled={loading}
+  className="
+    w-full
+    h-14
+    rounded-2xl
+    bg-transparent
+    pl-12
+    pr-12
+    text-sm
+    text-white
+    placeholder:text-gray-600
+    outline-none
+    disabled:opacity-50
+  "
+  style={{
+    background: BASE,
+    boxShadow:
+      "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
+  }}
+/>
 
                     <button
                       type="button"
@@ -1793,8 +1787,9 @@ const InputField = ({
   autoComplete,
 }) => {
   return (
-    <div>
+    <div className="w-full">
       <label
+        htmlFor={name}
         className="
           block
           text-xs
@@ -1807,30 +1802,25 @@ const InputField = ({
         {label}
       </label>
 
-      <div
-        className={`
-          relative
-          rounded-2xl
-          ${insetShadow}
-        `}
-      >
-        <Icon
-          size={18}
-          className="
-            absolute
-            left-4
-            top-1/2
-            -translate-y-1/2
-            pointer-events-none
-          "
-          style={{
-            color: value
-              ? PURPLE
-              : "#68707d",
-          }}
-        />
+      <div className="relative w-full rounded-2xl">
+        {Icon && (
+          <Icon
+            size={18}
+            className="
+              absolute
+              left-4
+              top-1/2
+              -translate-y-1/2
+              pointer-events-none
+            "
+            style={{
+              color: value ? PURPLE : "#68707d",
+            }}
+          />
+        )}
 
         <input
+          id={name}
           type={type}
           name={name}
           value={value}
@@ -1849,54 +1839,71 @@ const InputField = ({
             text-white
             placeholder:text-gray-600
             outline-none
+            border
+            border-transparent
+            focus:border-[#8c7cf7]/50
+            transition-all
+            duration-200
             disabled:opacity-50
           "
+          style={{
+            background: BASE,
+            boxShadow:
+              "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
+          }}
         />
       </div>
     </div>
   );
 };
-
 // =====================================================
 // PASSWORD RULE
 // =====================================================
 
-const PasswordRule = ({
-  valid,
-  text,
-}) => {
+const PasswordRule = ({ valid, text }) => {
   return (
-    <div className="flex items-center gap-1.5">
+    <div
+      className="
+        flex
+        items-center
+        gap-2
+        rounded-xl
+        px-3
+        py-2
+        transition-all
+        duration-200
+      "
+      style={{
+        background: BASE,
+        boxShadow:
+          "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
+      }}
+    >
       {valid ? (
         <Check
-          size={11}
-          style={{
-            color: TEAL,
-          }}
+          size={12}
+          strokeWidth={2.5}
+          style={{ color: TEAL }}
         />
       ) : (
         <X
-          size={11}
-          className="text-gray-700"
+          size={12}
+          strokeWidth={2}
+          style={{ color: "#68707d" }}
         />
       )}
 
       <span
-        className={`
-          text-[9px]
-          ${
-            valid
-              ? "text-gray-400"
-              : "text-gray-600"
-          }
-        `}
+        className="text-[10px] transition-colors duration-200"
+        style={{
+          color: valid ? TEAL : "#68707d",
+        }}
       >
         {text}
       </span>
     </div>
   );
 };
-
 // =====================================================
 // FEATURE CARD
 // =====================================================

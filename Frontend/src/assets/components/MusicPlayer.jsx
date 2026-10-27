@@ -1808,7 +1808,7 @@ export default function MusicPlayer() {
                                     boxShadow:
                                       "4px 4px 8px var(--theme-shadowDark), -4px -4px 8px var(--theme-shadowLight)",
                                   }}
-                                  onClick={() => playSong(song, index, songsRef.current, "queue")}
+                                  onClick={() => playSong(song)}
                                 >
                                   <div
                                     className="w-5 shrink-0 text-center text-[10px] font-semibold"
@@ -2008,45 +2008,59 @@ export default function MusicPlayer() {
                             }}
                           />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setRepeat((previous) =>
-                              previous === "one" ? "off" : "one",
-                            )
-                          }
-                          aria-pressed={repeat === "one"}
-                          className="player-tool-tile"
-                          style={{
-                            color:
-                              repeat === "one"
-                                ? "var(--theme-primary)"
-                                : "var(--theme-textMuted)",
-                            borderColor:
-                              repeat === "one"
-                                ? "rgba(140,124,247,.28)"
-                                : "rgba(255,255,255,.035)",
-                          }}
-                        >
-                          <span className="player-tool-icon">
-                            <Repeat size={17} />
-                          </span>
-                          <span className="player-tool-copy">
-                            <strong>Repeat one</strong>
-                            <small>
-                              {repeat === "one" ? "Enabled" : "Current track"}
-                            </small>
-                          </span>
-                          <span
-                            className="player-tool-status"
-                            style={{
-                              background:
-                                repeat === "one"
-                                  ? "var(--theme-primary)"
-                                  : "var(--theme-textMuted)",
-                            }}
-                          />
-                        </button>
+                      
+
+<button
+  type="button"
+  onClick={() =>
+    setRepeat((previous) => (previous === "one" ? "off" : "one"))
+  }
+  aria-pressed={repeat === "one"}
+  className={`player-tool-tile transition-all duration-300 ${
+    repeat === "one"
+      ? "!shadow-[inset_4px_4px_8px_rgba(0,0,0,0.4),inset_-4px_-4px_8px_rgba(255,255,255,0.04)] scale-[0.98] !border-[var(--theme-primary)]"
+      : "shadow-[5px_5px_10px_rgba(0,0,0,0.2),-5px_-5px_10px_rgba(255,255,255,0.02)]"
+  }`}
+  style={{
+    color:
+      repeat === "one"
+        ? "var(--theme-primary)"
+        : "var(--theme-textMuted)",
+    borderColor:
+      repeat === "one"
+        ? "rgba(140,124,247,.28)"
+        : "rgba(255,255,255,.035)",
+  }}
+>
+  <span className="player-tool-icon">
+    <Repeat size={17} />
+  </span>
+
+  <span className="player-tool-copy">
+    <strong>Repeat one</strong>
+    <small>{repeat === "one" ? "Enabled" : "Current track"}</small>
+  </span>
+
+  <span
+    className={`player-tool-status transition-all duration-300 ${
+      repeat === "one"
+        ? "shadow-[0_0_8px_var(--theme-primary)]"
+        : ""
+    }`}
+    style={{
+      background:
+        repeat === "one"
+          ? "var(--theme-primary)"
+          : "var(--theme-textMuted)",
+    }}
+  />
+</button>
+
+
+
+
+
+
                         <button
                           type="button"
                           onClick={handleShare}
