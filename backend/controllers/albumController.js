@@ -3,7 +3,7 @@ import Artist from "../models/Artist.js";
 import mongoose from "mongoose";
 import fs from "fs";
 import path from "path";
-
+import cloudinary from "../config/cloudinary.js";
 // ============================================================
 // ALBUM CONTROLLER
 // ============================================================
@@ -164,10 +164,21 @@ return date;
 * @param {Object} file - Multer uploaded file.
 * @returns {string}
   */
-  const getUploadedCoverPath = (file) => {
+const getUploadedCoverUrl = async (file) => {
   if (!file) return "";
 
-return `/uploads/albums/${file.filename}`;
+  try {
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: "lyricswayyy/images",
+      resource_type: "image",
+    });
+
+    return result.secure_url;
+  } finally {
+    if (file.path) {
+      await fs.promises.unlink(file.path).catch(() => {});
+    }
+  }
 };
 
 /**
@@ -357,7 +368,7 @@ try {
 
 // Multer stores an uploaded file in req.file.
 // req.body.coverImage is not the uploaded file itself.
-const coverImage = getUploadedCoverPath(req.file);
+const coverImage = await getUploadedCoverUrl(req.file);
 
 // --------------------------------------------------------
 // F. Create the album with all required schema fields.
@@ -791,7 +802,7 @@ if (isAdmin(req) && req.body.artist !== undefined) {
 if (req.file) {
   const oldCoverImage = album.coverImage;
 
-  album.coverImage = getUploadedCoverPath(req.file);
+  album.coverImage = await getUploadedCoverUrl(req.file);
 
   // Persist the new image path before deleting the old file.
   await album.save();

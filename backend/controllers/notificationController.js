@@ -23,6 +23,7 @@ export const getMyNotifications = async (req, res) => {
         success: false,
         message: "Authentication required",
       });
+      console.log("[Notifications] GET /api/notifications started");
     }
 
     const page = Math.max(

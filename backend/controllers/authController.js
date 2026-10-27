@@ -1135,6 +1135,9 @@ export const changePassword = async (
       await User.findById(userId)
         .select("+password");
 
+
+
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -1190,6 +1193,8 @@ export const changePassword = async (
         existingPassword,
         passwordHash
       );
+
+
 
     if (!validPassword) {
       return res.status(401).json({

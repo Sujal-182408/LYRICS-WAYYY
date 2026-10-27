@@ -548,24 +548,25 @@ const Collection = () => {
   // PLAY SONG
   // =========================================================
 
-  const handlePlaySong = (
-    song,
-    event
-  ) => {
-    event?.stopPropagation();
+const handlePlaySong = (song, event) => {
+  event?.stopPropagation();
 
-    const index =
-      filteredSongs.findIndex(
-        (item) =>
-          item._id === song._id
-      );
+  if (!song?._id) {
+    console.error("[Collection] Song is missing its ID.");
+    return;
+  }
 
-    playSong(
-      song,
-      index,
-      filteredSongs
-    );
-  };
+  const index = filteredSongs.findIndex(
+    (item) => String(item?._id) === String(song._id)
+  );
+
+  if (index === -1) {
+    console.error("[Collection] Song not found in filtered songs.");
+    return;
+  }
+
+  playSong(song, index, filteredSongs, "library");
+};
 
   // =========================================================
   // ANIMATIONS

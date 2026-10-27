@@ -180,6 +180,23 @@ const formatCount = (value) => {
 const getRecentSong = (entry) =>
   entry?.song || entry?.track || entry?.songId || entry;
 
+const deduplicateSongs = (items = []) => {
+  const seen = new Set();
+
+  return items.filter((song) => {
+    const id = getId(song);
+
+    if (id == null) return false;
+
+    const normalizedId = String(id);
+
+    if (seen.has(normalizedId)) return false;
+
+    seen.add(normalizedId);
+    return true;
+  });
+};
+
 const getSongImage = (song) =>
   getImage(
     song?.coverImage ||
@@ -738,19 +755,35 @@ const Suggestions = () => {
         setPlaylists(safePlaylists);
         setCollections(safeCollections);
 
-        setRecentSongs(
-          safeRecent.filter(Boolean).map((entry) => {
-            const song = getRecentSong(entry);
+        const normalizedRecent = safeRecent
+  .filter(Boolean)
+  .map((entry) => {
+    const song = getRecentSong(entry);
 
-            return {
-              ...entry,
-              song:
-                song && typeof song === "object"
-                  ? song
-                  : null,
-            };
-          }),
-        );
+    return {
+      ...entry,
+      song:
+        song && typeof song === "object"
+          ? song
+          : null,
+    };
+  })
+  .filter((entry) => entry.song && getId(entry.song));
+
+// Remove duplicate song IDs while preserving their original order.
+const uniqueRecent = [];
+const seenRecentIds = new Set();
+
+for (const entry of normalizedRecent) {
+  const songId = String(getId(entry.song));
+
+  if (seenRecentIds.has(songId)) continue;
+
+  seenRecentIds.add(songId);
+  uniqueRecent.push(entry);
+}
+
+setRecentSongs(uniqueRecent);
 
         const hasAnyData =
           safeSongs.length > 0 ||

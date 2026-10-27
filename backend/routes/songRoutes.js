@@ -98,17 +98,18 @@ router.get(
 // =====================================================
 // UPDATE SONG
 // =====================================================
-
 router.put(
-  "/:id",
-  authMiddleware,
-  artistAccess,
-  upload.fields([
-    { name: "coverImage", maxCount: 1 },
-    { name: "audioFile", maxCount: 1 },
-  ]),
-  updateSong
+"/:id",
+authMiddleware,
+artistAccess,
+upload.fields([
+{ name: "coverImage", maxCount: 1 },
+{ name: "audioFile", maxCount: 1 },
+]),
+upload.validateUploadedFiles,
+updateSong
 );
+
 
 // =====================================================
 // DELETE SONG

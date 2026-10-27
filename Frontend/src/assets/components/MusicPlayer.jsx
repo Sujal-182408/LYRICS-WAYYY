@@ -1808,7 +1808,7 @@ export default function MusicPlayer() {
                                     boxShadow:
                                       "4px 4px 8px var(--theme-shadowDark), -4px -4px 8px var(--theme-shadowLight)",
                                   }}
-                                  onClick={() => playSong(song)}
+                                  onClick={() => playSong(song, index, songsRef.current, "queue")}
                                 >
                                   <div
                                     className="w-5 shrink-0 text-center text-[10px] font-semibold"
