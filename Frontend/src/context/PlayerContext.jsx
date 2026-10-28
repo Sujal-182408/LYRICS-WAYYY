@@ -7,6 +7,7 @@ import {
   useState,
   useCallback,
 } from "react";
+import axios from "axios";
 import { createPortal } from "react-dom";
 import { X, Music2, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "../AuthContext";
@@ -14,7 +15,11 @@ import { BASE_URL } from "../config/api";
 import { startListening, updateListening } from "../services/profileService";
 import { getSongs } from "../services/songService";
 
+
 const PlayerContext = createContext(null);
+
+
+
 const PlaybackProgressContext = createContext(null);
 
 const QUEUE_STORAGE_KEY = "LYRICS_WAYYY_queue";
@@ -33,33 +38,36 @@ const getPlayerStorageKeys = (userId) => {
     playerStateKey: `${PLAYER_STATE_STORAGE_KEY}_${safeUserId}`,
     queueKey: `${QUEUE_STORAGE_KEY}_${safeUserId}`,
   };
-}
+};
 
 const normalizePlayerState = (saved) => {
   if (!saved || typeof saved !== "object") {
     return null;
   }
 
-  const song =
-    saved.song && typeof saved.song === "object" && saved.song._id
-      ? saved.song
-      : null;
+  const isValidTrack = (item) =>
+    item &&
+    typeof item === "object" &&
+    (item._id || item.id) &&
+    (item.audioFile || item.audioUrl);
+
+  const song = saved.song && isValidTrack(saved.song) ? saved.song : null;
 
   if (!song) return null;
 
   const playlist = Array.isArray(saved.playlist)
-    ? saved.playlist.filter(
-        (item) => item && typeof item === "object" && item._id,
-      )
+    ? saved.playlist.filter(isValidTrack)
     : [];
 
   // Ensure the selected song exists in the restored playlist.
-  if (!playlist.some((item) => String(item._id) === String(song._id))) {
+  const songId = String(song._id || song.id);
+
+  if (!playlist.some((item) => String(item._id || item.id) === songId)) {
     playlist.push(song);
   }
 
   const index = playlist.findIndex(
-    (item) => String(item._id) === String(song._id),
+    (item) => String(item._id || item.id) === songId,
   );
 
   return {
@@ -109,9 +117,9 @@ const readUserQueue = (userId) => {
     const saved = localStorage.getItem(keys.queueKey);
     const parsed = saved ? JSON.parse(saved) : [];
 
-    return Array.isArray(parsed)
-      ? parsed.filter((song) => song && song._id)
-      : [];
+  return Array.isArray(parsed)
+  ? parsed.filter((song) => song && (song._id || song.id))
+  : [];
   } catch (error) {
     console.warn("Failed to restore playback queue:", error);
     return [];
@@ -150,6 +158,13 @@ const saveUserQueue = (userId, queue) => {
 };
 
 export const PlayerProvider = ({ children }) => {
+
+const getSongAudioSource = (song) =>
+  song?.audioFile ||
+  song?.audioUrl ||
+  song?.audio ||
+  "";
+
   const { user, isAuthenticated } = useAuth();
 
   const userId = isAuthenticated && user?._id ? String(user._id) : null;
@@ -163,8 +178,8 @@ export const PlayerProvider = ({ children }) => {
   const audioRef = useRef(null);
 
   if (!audioRef.current) {
-   audioRef.current = new Audio();
-audioRef.current.preload = "auto";
+    audioRef.current = new Audio();
+    audioRef.current.preload = "auto";
   }
 
   // =====================================================
@@ -202,22 +217,22 @@ audioRef.current.preload = "auto";
   // PLAYBACK REFS
   // =====================================================
 
-const currentSongRef = useRef(null);
-const currentIndexRef = useRef(-1);
+  const currentSongRef = useRef(null);
+  const currentIndexRef = useRef(-1);
 
-// The currently active playback list.
-const songsRef = useRef([]);
+  // The currently active playback list.
+  const songsRef = useRef([]);
 
-// The complete song library, separate from the active playlist.
-const librarySongsRef = useRef([]);
+  // The complete song library, separate from the active playlist.
+  const librarySongsRef = useRef([]);
 
-// Playback source tracking.
-const playbackSourceRef = useRef("library");
-const activePlaylistRef = useRef([]);
-const playlistIndexRef = useRef(-1);
-const activeQueueRef = useRef(false);
+  // Playback source tracking.
+  const playbackSourceRef = useRef("library");
+  const activePlaylistRef = useRef([]);
+  const playlistIndexRef = useRef(-1);
+  const activeQueueRef = useRef(false);
 
-const queueRef = useRef([]);
+  const queueRef = useRef([]);
 
   const repeatRef = useRef(false);
   const shuffleRef = useRef(false);
@@ -276,61 +291,67 @@ const queueRef = useRef([]);
     });
   }, []);
 
- const setLibrarySongs = useCallback((value) => {
-  
-  const next =
-    typeof value === "function"
-      ? value(librarySongsRef.current)
-      : value;
+  const setLibrarySongs = useCallback((value) => {
+    const next =
+      typeof value === "function" ? value(librarySongsRef.current) : value;
 
-  const validSongs = Array.isArray(next)
-    ? next.filter((song) => song?._id && song.audioFile)
-    : [];
+    const validSongs = Array.isArray(next)
+      ? next.filter((song) => song?._id && song.audioFile)
+      : [];
 
-  const uniqueSongs = [
-    ...new Map(
-      validSongs.map((song) => [String(song._id), song]),
-    ).values(),
-  ];
+    const uniqueSongs = [
+      ...new Map(validSongs.map((song) => [String(song._id), song])).values(),
+    ];
 
-  librarySongsRef.current = uniqueSongs;
-console.log("[PlayerContext] Stored library:", uniqueSongs.length);
-  console.log(
-    "[PlayerContext] Full library loaded:",
-    uniqueSongs.length,
-    "songs",
-  );
-}, []);
+    librarySongsRef.current = uniqueSongs;
+    console.log("[PlayerContext] Stored library:", uniqueSongs.length);
+    console.log(
+      "[PlayerContext] Full library loaded:",
+      uniqueSongs.length,
+      "songs",
+    );
+  }, []);
 
 useEffect(() => {
   let cancelled = false;
 
   const loadFullLibrary = async () => {
     try {
+      console.log("[PlayerProvider] Loading local song library...");
+
       const response = await getSongs();
 
-      const fetchedSongs = Array.isArray(response?.songs)
-        ? response.songs
-        : Array.isArray(response?.data)
-          ? response.data
-          : Array.isArray(response)
-            ? response
-            : [];
+      console.log("[PlayerProvider] Songs API response:", response);
+
+      const songsData = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.songs)
+          ? response.songs
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response?.data?.songs)
+              ? response.data.songs
+              : [];
 
       if (cancelled) return;
 
-      setLibrarySongs(fetchedSongs);
-
       console.log(
-        "[PlayerProvider] Full library loaded:",
-        fetchedSongs.length,
-        "songs",
+        "[PlayerProvider] Local songs received:",
+        songsData.length
       );
+
+      if (songsData.length === 0) {
+        console.warn(
+          "[PlayerProvider] No local songs were returned by getSongs()."
+        );
+      }
+
+      setLibrarySongs(songsData);
     } catch (error) {
       if (!cancelled) {
         console.error(
           "[PlayerProvider] Failed to load full song library:",
-          error,
+          error.response?.data || error.message
         );
       }
     }
@@ -342,7 +363,6 @@ useEffect(() => {
     cancelled = true;
   };
 }, [setLibrarySongs]);
-
 
   const setCurrentSong = useCallback((value) => {
     setCurrentSongState((previous) => {
@@ -533,110 +553,151 @@ useEffect(() => {
     setSleepTimer(null);
   }, []);
 
-  // =====================================================
-  // RESTORE ONLY THE CURRENT USER'S PLAYER
-  // =====================================================
+// =====================================================
+// RESTORE ONLY THE CURRENT USER'S PLAYER
+// =====================================================
 
-  useEffect(() => {
-    const audio = audioRef.current;
+useEffect(() => {
+  const audio = audioRef.current;
+  let cancelled = false;
 
-    userStateReadyRef.current = false;
-    loadedUserIdRef.current = null;
+  // Prevent persistence effects from saving stale state.
+  userStateReadyRef.current = false;
+  loadedUserIdRef.current = null;
 
-    resetActivePlayer();
+  // Stop and clear the previous user's active playback.
+  resetActivePlayer();
 
-    activeUserIdRef.current = userId;
+  activeUserIdRef.current = userId;
 
-    if (!userId) {
-      userStateReadyRef.current = true;
-      restoreReadyRef.current = true;
-      return undefined;
-    }
-
-    const savedState = readUserPlayerState(userId);
-    const savedQueue = readUserQueue(userId);
-
-    savedPlayerStateRef.current = savedState;
-
-    setQueueState(savedQueue);
-    queueRef.current = savedQueue;
-
-    if (savedState?.song?._id) {
-      const restoredSong = savedState.song;
-
-      const savedPlaylist = Array.isArray(savedState.playlist)
-        ? savedState.playlist.filter((song) => song?._id)
-        : [];
-
-      const playlistContainsSong = savedPlaylist.some(
-        (song) => String(song._id) === String(restoredSong._id),
-      );
-
-      const restoredPlaylist = playlistContainsSong
-        ? savedPlaylist
-        : [restoredSong, ...savedPlaylist];
-
-      const restoredIndex = restoredPlaylist.findIndex(
-        (song) => String(song._id) === String(restoredSong._id),
-      );
-
-      currentSongRef.current = restoredSong;
-      currentIndexRef.current = restoredIndex;
-      songsRef.current = restoredPlaylist;
-
-      setCurrentSongState(restoredSong);
-      setCurrentIndexState(restoredIndex);
-      setSongsState(restoredPlaylist);
-
-      setCurrentTime(savedState.position ?? 0);
-      setVolume(savedState.volume ?? 1);
-      setMuted(savedState.muted ?? false);
-      setShuffleState(savedState.shuffle ?? false);
-      setRepeatState(savedState.repeat ?? false);
-
-      volumeRef.current = savedState.volume ?? 1;
-      mutedRef.current = savedState.muted ?? false;
-      shuffleRef.current = savedState.shuffle ?? false;
-      repeatRef.current = savedState.repeat ?? false;
-
-      restoreReadyRef.current = false;
-    } else {
-      currentSongRef.current = null;
-      currentIndexRef.current = -1;
-      songsRef.current = [];
-
-      setCurrentSongState(null);
-      setCurrentIndexState(-1);
-      setSongsState([]);
-      setCurrentTime(0);
-
-      restoreReadyRef.current = true;
-    }
-
-    loadedUserIdRef.current = userId;
+  // No authenticated user: start with an empty player.
+  if (!userId) {
+    savedPlayerStateRef.current = null;
     userStateReadyRef.current = true;
+    restoreReadyRef.current = true;
 
     return () => {
-      if (audio) {
-        audio.pause();
-      }
+      cancelled = true;
     };
-  }, [userId, resetActivePlayer]);
+  }
+
+  // Restore state belonging only to this user.
+  const savedState = readUserPlayerState(userId);
+  const savedQueue = readUserQueue(userId);
+
+  if (cancelled) return undefined;
+
+  savedPlayerStateRef.current = savedState;
+
+  queueRef.current = savedQueue;
+  setQueueState(savedQueue);
+
+  if (savedState?.song?._id) {
+    const restoredSong = savedState.song;
+
+    // Restore the saved playlist and ensure it contains the selected song.
+    const savedPlaylist = Array.isArray(savedState.playlist)
+      ? savedState.playlist.filter(
+          (song) => song && (song._id || song.id),
+        )
+      : [];
+
+    const restoredSongId = String(restoredSong._id);
+
+    const playlistContainsSong = savedPlaylist.some(
+      (song) => String(song._id ?? song.id) === restoredSongId,
+    );
+
+    const restoredPlaylist = playlistContainsSong
+      ? savedPlaylist
+      : [restoredSong, ...savedPlaylist];
+
+    const restoredIndex = restoredPlaylist.findIndex(
+      (song) => String(song._id ?? song.id) === restoredSongId,
+    );
+
+    // Update refs before React state so playback handlers see consistent data.
+    currentSongRef.current = restoredSong;
+    currentIndexRef.current = restoredIndex;
+    songsRef.current = restoredPlaylist;
+
+    setCurrentSongState(restoredSong);
+    setCurrentIndexState(restoredIndex);
+    setSongsState(restoredPlaylist);
+
+    const restoredPosition = Math.max(
+      0,
+      Number(savedState.position) || 0,
+    );
+
+    const restoredVolume = Math.max(
+      0,
+      Math.min(1, Number(savedState.volume) || 0),
+    );
+
+    const restoredMuted = Boolean(savedState.muted);
+    const restoredShuffle = Boolean(savedState.shuffle);
+    const restoredRepeat = Boolean(savedState.repeat);
+
+    setCurrentTime(restoredPosition);
+    setVolume(restoredVolume);
+    setMuted(restoredMuted);
+    setShuffleState(restoredShuffle);
+    setRepeatState(restoredRepeat);
+
+    volumeRef.current = restoredVolume;
+    mutedRef.current = restoredMuted;
+    shuffleRef.current = restoredShuffle;
+    repeatRef.current = restoredRepeat;
+
+    // The saved audio position will be restored by the dedicated
+    // saved-position effect after the audio metadata becomes available.
+    restoreReadyRef.current = false;
+  } else {
+    // No valid saved song: leave the player empty.
+    currentSongRef.current = null;
+    currentIndexRef.current = -1;
+    songsRef.current = [];
+
+    setCurrentSongState(null);
+    setCurrentIndexState(-1);
+    setSongsState([]);
+    setCurrentTime(0);
+    setDuration(0);
+
+    durationRef.current = 0;
+
+    restoreReadyRef.current = true;
+  }
+
+  // Mark restoration complete for this authenticated user.
+  loadedUserIdRef.current = userId;
+  userStateReadyRef.current = true;
+
+  return () => {
+    cancelled = true;
+
+    // Pause only during cleanup, such as an account switch or unmount.
+    if (audio) {
+      audio.pause();
+    }
+  };
+}, [userId, resetActivePlayer]);
+
   // =====================================================
   // USER-SPECIFIC QUEUE PERSISTENCE
   // =====================================================
 
-  useEffect(() => {
-    if (!userId) return;
+ useEffect(() => {
+if (!userId) return;
 
-    if (!userStateReadyRef.current) return;
+if (!userStateReadyRef.current) return;
+if (activeUserIdRef.current !== userId) return;
+if (loadedUserIdRef.current !== userId) return;
 
-    if (activeUserIdRef.current !== userId) return;
+saveUserQueue(userId, queue);
+}, [userId, queue]);
 
-    if (loadedUserIdRef.current !== userId) return;
-
-    saveUserQueue(userId, queue);
-  }, [userId, queue]);
 
   // =====================================================
   // AUDIO VOLUME
@@ -712,28 +773,35 @@ useEffect(() => {
   );
 
   const mergeProgressTasks = useCallback((previous, next) => {
-    if (!previous || previous.historyId !== next.historyId) {
-      return {
-        historyId: next.historyId,
-        payload: { ...next.payload },
-      };
-    }
+// Handle missing tasks safely.
+if (!previous) return next;
+if (!next) return previous;
 
-    return {
-      historyId: next.historyId,
-      payload: {
-        listenedSeconds: Math.max(
-          Number(previous.payload?.listenedSeconds) || 0,
-          Number(next.payload?.listenedSeconds) || 0,
-        ),
-        position: next.payload.position,
-        duration: next.payload.duration,
-        completed:
-          previous.payload?.completed === true ||
-          next.payload?.completed === true,
-      },
-    };
-  }, []);
+// Never merge progress belonging to different listening sessions.
+if (previous.historyId !== next.historyId) {
+return {
+historyId: next.historyId,
+payload: { ...next.payload },
+};
+}
+
+// Merge progress for the same session without losing accumulated time.
+return {
+historyId: next.historyId,
+payload: {
+listenedSeconds: Math.max(
+Number(previous.payload?.listenedSeconds) || 0,
+Number(next.payload?.listenedSeconds) || 0,
+),
+position: next.payload.position,
+duration: next.payload.duration,
+completed:
+previous.payload?.completed === true ||
+next.payload?.completed === true,
+},
+};
+}, []);
+
 
   const saveListeningProgress = useCallback(
     async (completed = false, force = false) => {
@@ -821,44 +889,37 @@ useEffect(() => {
     [mergeProgressTasks],
   );
 
+  const finishListeningSession = useCallback(
+    async (completed = false) => {
+      const historyId = listeningSessionRef.current;
 
-const finishListeningSession = useCallback(
-  async (completed = false) => {
-    const historyId = listeningSessionRef.current;
+      if (!historyId) return;
 
-    if (!historyId) return;
+      accumulateListeningTime(true);
+      resetPlaybackTrackers();
 
-    accumulateListeningTime(true);
-    resetPlaybackTrackers();
+      // Save the previous session's progress.
+      await saveListeningProgress(completed, true);
 
-    // Save the previous session's progress.
-    await saveListeningProgress(completed, true);
+      // Do not clear a newer song's listening session.
+      if (listeningSessionRef.current !== historyId) {
+        return;
+      }
 
-    // Do not clear a newer song's listening session.
-    if (listeningSessionRef.current !== historyId) {
-      return;
-    }
+      listeningSessionRef.current = null;
+      sessionSongIdRef.current = null;
 
-    listeningSessionRef.current = null;
-    sessionSongIdRef.current = null;
+      listenedSecondsRef.current = 0;
+      lastListeningUpdateRef.current = 0;
 
-    listenedSecondsRef.current = 0;
-    lastListeningUpdateRef.current = 0;
+      if (pendingProgressRef.current?.historyId === historyId) {
+        pendingProgressRef.current = null;
+      }
 
-    if (pendingProgressRef.current?.historyId === historyId) {
-      pendingProgressRef.current = null;
-    }
-
-    sessionGenerationRef.current += 1;
-  },
-  [
-    accumulateListeningTime,
-    resetPlaybackTrackers,
-    saveListeningProgress,
-  ],
-);
-
-
+      sessionGenerationRef.current += 1;
+    },
+    [accumulateListeningTime, resetPlaybackTrackers, saveListeningProgress],
+  );
 
   const createListeningSession = useCallback(
     async (song) => {
@@ -964,47 +1025,46 @@ const finishListeningSession = useCallback(
   // AUDIO URL
   // =====================================================
 
-  // =====================================================
-  // AUDIO URL
-  // =====================================================
+ const getAudioUrl = useCallback((audioFile) => {
+if (!audioFile) return "";
 
-  const getAudioUrl = useCallback((audioFile) => {
-    if (!audioFile) return "";
+const value = String(audioFile).trim();
+if (!value) return "";
 
-    const value = String(audioFile).trim();
+// Preserve complete Cloudinary and other HTTP(S) URLs.
+if (/^https?:\/\//i.test(value)) {
+return value;
+}
 
-    if (!value) return "";
+// Normalize Windows-style paths.
+let cleanPath = value.replace(/\\/g, "/");
 
-    // Preserve complete Cloudinary or other HTTP(S) URLs.
-    if (/^https?:\/\//i.test(value)) {
-      return value;
-    }
+// If a full local path was stored, keep only the uploads/ portion.
+const uploadsIndex = cleanPath.toLowerCase().indexOf("uploads/");
 
-    // Normalize Windows-style paths.
-    let cleanPath = value.replace(/\\/g, "/");
+if (uploadsIndex !== -1) {
+cleanPath = cleanPath.substring(uploadsIndex);
+}
 
-    // Start at uploads/ if a full local path was stored.
-    const uploadsIndex = cleanPath.toLowerCase().indexOf("uploads/");
+// Remove leading slashes.
+cleanPath = cleanPath.replace(/^\/+/, "");
 
-    if (uploadsIndex !== -1) {
-      cleanPath = cleanPath.substring(uploadsIndex);
-    }
+// Normalize repeated uploads/ prefixes.
+cleanPath = cleanPath.replace(/^(?:uploads\/)+/i, "uploads/");
 
-    // Remove leading slashes.
-    cleanPath = cleanPath.replace(/^\/+/, "");
+// Remove trailing slashes from BASE_URL.
+const baseUrl = String(BASE_URL || "").replace(/\/+$/, "");
 
-    // Avoid uploads/uploads/ duplication.
-    cleanPath = cleanPath.replace(/^(?:uploads\/)+/i, "uploads/");
+if (!baseUrl) {
+console.error("BASE_URL is missing in config/api.");
+return "";
+}
 
-    const baseUrl = String(BASE_URL || "").replace(/\/+$/, "");
+if (!cleanPath) return "";
 
-    if (!baseUrl) {
-      console.error("BASE_URL is missing in config/api.");
-      return "";
-    }
+return `${baseUrl}/${cleanPath}`;
+}, []);
 
-    return `${baseUrl}/${cleanPath}`;
-  }, []);
 
   // =====================================================
   // RESTORE THE SELECTED USER'S SAVED POSITION
@@ -1039,7 +1099,10 @@ const finishListeningSession = useCallback(
       return;
     }
 
-    const url = getAudioUrl(song.audioFile);
+
+
+const audioSource = getSongAudioSource(song);
+const url = getAudioUrl(audioSource);
 
     if (!url) {
       console.error(
@@ -1053,435 +1116,532 @@ const finishListeningSession = useCallback(
 
     let cancelled = false;
 
-    const restorePosition = () => {
-      if (cancelled) return;
+   const restorePosition = () => {
+  if (cancelled) return;
 
-      if (activeUserIdRef.current !== userId) return;
+  if (activeUserIdRef.current !== userId) return;
 
-      // Make sure the saved song is still selected.
-      if (String(currentSongRef.current?._id) !== String(saved.song._id)) {
-        return;
-      }
+  // Make sure the saved song is still selected.
+  const currentSongId =
+    currentSongRef.current?._id ?? currentSongRef.current?.id;
+  const savedSongId = saved.song?._id ?? saved.song?.id;
 
-      const target = Math.max(0, Number(saved.position) || 0);
+  if (
+    currentSongId == null ||
+    savedSongId == null ||
+    String(currentSongId) !== String(savedSongId)
+  ) {
+    return;
+  }
 
-      try {
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          audio.currentTime = Math.min(
-            target,
-            Math.max(0, audio.duration - 0.25),
-          );
-        } else {
-          audio.currentTime = target;
-        }
-      } catch (error) {
-        console.warn("Could not restore playback position:", error);
-      }
+  const target = Math.max(0, Number(saved.position) || 0);
 
-      setCurrentTime(Number(audio.currentTime) || 0);
+  try {
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      audio.currentTime = Math.min(
+        target,
+        Math.max(0, audio.duration - 0.25),
+      );
+    } else {
+      audio.currentTime = target;
+    }
+  } catch (error) {
+    console.warn("Could not restore playback position:", error);
+  }
 
-      durationRef.current =
-        Number.isFinite(audio.duration) && audio.duration > 0
-          ? audio.duration
-          : 0;
+  setCurrentTime(Number(audio.currentTime) || 0);
 
-      setDuration(durationRef.current);
+  durationRef.current =
+    Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : 0;
 
-      restoreReadyRef.current = true;
-    };
+  setDuration(durationRef.current);
+  restoreReadyRef.current = true;
+};
 
     // This effect should pause audio only while restoring the
     // saved song, never when the user selects another song.
+
     audio.pause();
 
-    setPlaying(false);
+setPlaying(false);
 
-    if (audio.src !== url) {
-      audio.src = url;
-      audio.load();
-    }
+if (audio.src !== url) {
+  audio.src = url;
+  audio.load();
+}
 
-    if (audio.readyState >= 1) {
-      restorePosition();
-    } else {
-      audio.addEventListener("loadedmetadata", restorePosition, { once: true });
-    }
+if (audio.readyState >= 1) {
+  restorePosition();
+} else {
+  audio.addEventListener("loadedmetadata", restorePosition, {
+    once: true,
+  });
+}
 
-    return () => {
-      cancelled = true;
-
-      audio.removeEventListener("loadedmetadata", restorePosition);
-    };
-  }, [userId, currentSong?._id, getAudioUrl]);
+return () => {
+  cancelled = true;
+  audio.removeEventListener("loadedmetadata", restorePosition);
+};
+}, [userId, currentSong?._id, getAudioUrl]);
 
   // =====================================================
   // SAVE THE CURRENT USER'S PLAYER STATE
   // =====================================================
 
   useEffect(() => {
-    if (!userId) return;
+  if (!userId) return;
+  if (!userStateReadyRef.current) return;
+  if (activeUserIdRef.current !== userId) return;
+  if (loadedUserIdRef.current !== userId) return;
+  if (!restoreReadyRef.current) return;
 
-    if (!userStateReadyRef.current) return;
+  // Do not save a player state without a selected song.
+  const songId = currentSong?._id ?? currentSong?.id;
+  if (songId == null) return;
 
-    if (activeUserIdRef.current !== userId) return;
+  const audioPosition = Number(audioRef.current?.currentTime);
 
-    if (loadedUserIdRef.current !== userId) return;
+  const position =
+    Number.isFinite(audioPosition) && audioPosition >= 0
+      ? audioPosition
+      : Math.max(0, Number(currentTime) || 0);
 
-    if (!restoreReadyRef.current) return;
-
-    // A user with no selected song should not acquire
-    // a random/default song in saved state.
-    if (!currentSong?._id) return;
-
-    const audioPosition = Number(audioRef.current?.currentTime);
-
-    const position =
-      Number.isFinite(audioPosition) && audioPosition >= 0
-        ? audioPosition
-        : Math.max(0, Number(currentTime) || 0);
-
-    saveUserPlayerState(userId, {
-      song: currentSong,
-      index: currentIndex,
-      position,
-      volume,
-      muted,
-      shuffle,
-      repeat,
-      savedAt: Date.now(),
-    });
-  }, [
-    userId,
-    currentSong,
-    currentIndex,
-    currentTime,
+  saveUserPlayerState(userId, {
+    song: currentSong,
+    index: currentIndex,
+    position,
     volume,
     muted,
     shuffle,
     repeat,
-  ]);
+    savedAt: Date.now(),
+  });
+}, [
+  userId,
+  currentSong,
+  currentIndex,
+  currentTime,
+  volume,
+  muted,
+  shuffle,
+  repeat,
+]);
 
   // =====================================================
   // PLAY SONG
   // =====================================================
 
-  const playSongInternal = useCallback(
-    async (
-      song,
-      index = 0,
-      playlist = songsRef.current,
-      source = "library",
-    ) => {
-      if (!isAuthenticated || !userId) {
-  setLoginPromptOpen(true);
-  return;
-}
+ const playSongInternal = useCallback(
+  async (
+    song,
+    index = 0,
+    playlist = songsRef.current,
+    source = "library",
+  ) => {
+    // Require an authenticated user.
+    if (!isAuthenticated || !userId) {
+      setLoginPromptOpen(true);
+      return;
+    }
 
-if (!song?._id) return;
+    if (!song || typeof song !== "object") return;
 
-      if (
-        !userStateReadyRef.current ||
-        activeUserIdRef.current !== userId ||
-        loadedUserIdRef.current !== userId
-      ) {
-        return;
-      }
+    // Support MongoDB _id and fallback id.
+    const rawSongId = song._id ?? song.id;
 
-      const audio = audioRef.current;
-      if (!audio) return;
+    if (rawSongId == null || String(rawSongId).trim() === "") {
+      console.error("Cannot play a song without an ID:", song);
+      return;
+    }
 
-      const songId = String(song._id);
-      const safePlaylist = Array.isArray(playlist) ? playlist : [];
+    const songId = String(rawSongId);
 
-      if (source === "playlist") {
-        playbackSourceRef.current = "playlist";
-        activePlaylistRef.current = safePlaylist;
-        activeQueueRef.current = false;
-        playlistIndexRef.current = safePlaylist.findIndex(
-          (item) => String(item?._id) === songId,
-        );
-      } else if (source === "queue") {
-        playbackSourceRef.current = "queue";
-        activeQueueRef.current = true;
-      } else {
-        playbackSourceRef.current = "library";
-        activeQueueRef.current = false;
-        activePlaylistRef.current = [];
-        playlistIndexRef.current = -1;
-      }
+    // Wait until the current user's player state is ready.
+    if (
+      !userStateReadyRef.current ||
+      activeUserIdRef.current !== userId ||
+      loadedUserIdRef.current !== userId
+    ) {
+      return;
+    }
 
-      // Resolve the actual index in the supplied playlist.
-      const playlistIndex = safePlaylist.findIndex(
-        (item) => String(item?._id) === songId,
-      );
-      const safeIndex = playlistIndex >= 0 ? playlistIndex : index;
+    const audio = audioRef.current;
+    if (!audio) return;
 
-      const sameSong = String(currentSongRef.current?._id) === songId;
+    // Keep the selected track in the playback list.
+    const suppliedPlaylist = Array.isArray(playlist) ? playlist : [];
 
-      const epoch = ++playbackEpochRef.current;
+    const safePlaylist = suppliedPlaylist.some(
+      (item) => getTrackId(item) === songId,
+    )
+      ? suppliedPlaylist
+      : [song, ...suppliedPlaylist];
 
-      try {
-       if (!sameSong) {
-  accumulateListeningTime(true);
-  audio.pause();
+    const playlistIndex = safePlaylist.findIndex(
+      (item) => getTrackId(item) === songId,
+    );
 
-  sessionGenerationRef.current += 1;
+    const safeIndex =
+      playlistIndex >= 0 ? playlistIndex : Math.max(0, index);
 
-  // Start closing the previous session without blocking audio startup.
-  const finishPreviousSession = finishListeningSession(false);
+    // Track the playback source and navigation list.
+    if (source === "playlist") {
+      playbackSourceRef.current = "playlist";
+      activePlaylistRef.current = safePlaylist;
+      activeQueueRef.current = false;
+      playlistIndexRef.current = safeIndex;
+    } else if (source === "queue") {
+      playbackSourceRef.current = "queue";
+      activeQueueRef.current = true;
+      activePlaylistRef.current = safePlaylist;
+      playlistIndexRef.current = safeIndex;
+    } else {
+      playbackSourceRef.current = "library";
+      activeQueueRef.current = false;
+      activePlaylistRef.current = [];
+      playlistIndexRef.current = -1;
+    }
 
-  // Check that this request is still the newest one.
-  if (
-    !mountedRef.current ||
-    epoch !== playbackEpochRef.current ||
-    activeUserIdRef.current !== userId
-  ) {
-    void Promise.resolve(finishPreviousSession).catch((error) => {
-      console.error("Finish previous listening session failed:", error);
-    });
-    return;
-  }
+    const sameSong = getTrackId(currentSongRef.current) === songId;
+    const epoch = ++playbackEpochRef.current;
 
-  // Continue loading and playing the new song immediately.
-  void Promise.resolve(finishPreviousSession).catch((error) => {
-    console.error("Finish previous listening session failed:", error);
-  });
-}
-        restoreReadyRef.current = true;
-        savedPlayerStateRef.current = null;
+    try {
+      if (!sameSong) {
+        // Save elapsed time and close the previous listening session.
+        accumulateListeningTime(true);
+        audio.pause();
+        sessionGenerationRef.current += 1;
 
-        // Update playlist and selected-song references together.
-        songsRef.current = safePlaylist;
-        setSongsState(safePlaylist);
+        const finishPreviousSession = finishListeningSession(false);
 
-        currentSongRef.current = song;
-        setCurrentSongState(song);
-
-        currentIndexRef.current = safeIndex;
-        setCurrentIndexState(safeIndex);
-
-        // Reset timeline and duration immediately.
-        seekingRef.current = false;
-        setCurrentTime(0);
-        durationRef.current = 0;
-        setDuration(0);
-        resetPlaybackTrackers();
-
-        const url = getAudioUrl(song.audioFile);
-
-        if (!url) {
-          console.error("Audio URL is missing for song:", song);
-          setPlaying(false);
-          return;
-        }
-
-        // Load the selected song's audio source.
-        if (audio.src !== url) {
-          audio.pause();
-          audio.src = url;
-          audio.load();
-        } else if (!sameSong) {
-          audio.currentTime = 0;
-        } else {
-          // Restarting the same song should reset its position.
-          audio.currentTime = 0;
-        }
-
-        audio.volume = mutedRef.current ? 0 : volumeRef.current;
-
-        // Wait for the selected source to begin playback.
-        await audio.play();
-
-        // Ignore stale playback requests.
+        // Don't continue if a newer request has taken over.
         if (
           !mountedRef.current ||
           epoch !== playbackEpochRef.current ||
           activeUserIdRef.current !== userId
         ) {
-          audio.pause();
+          void Promise.resolve(finishPreviousSession).catch((error) => {
+            console.error(
+              "Finish previous listening session failed:",
+              error,
+            );
+          });
+
           return;
         }
 
-        setPlaying(true);
-
-        // Metadata may not have fired yet when play() resolves.
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          durationRef.current = audio.duration;
-          setDuration(audio.duration);
-        }
-
-        setCurrentTime(
-          Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
-        );
-
-        if (
-          !listeningSessionRef.current ||
-          sessionSongIdRef.current !== songId
-        ) {
-          void createListeningSession(song);
-        }
-      } catch (error) {
-        // A source replacement can interrupt an earlier play request.
-        if (
-          error?.name === "AbortError" ||
-          epoch !== playbackEpochRef.current
-        ) {
-          return;
-        }
-
-        console.error("Play song error:", error);
-        setPlaying(false);
+        // Don't block playback while the old session finishes.
+        void Promise.resolve(finishPreviousSession).catch((error) => {
+          console.error(
+            "Finish previous listening session failed:",
+            error,
+          );
+        });
       }
-    },
-   [
-  userId,
-  isAuthenticated,
-  accumulateListeningTime,
-  finishListeningSession,
-  resetPlaybackTrackers,
-  getAudioUrl,
-  createListeningSession,
-],
-  );
+
+      restoreReadyRef.current = true;
+      savedPlayerStateRef.current = null;
+
+      // Update the player state.
+      songsRef.current = safePlaylist;
+      setSongsState(safePlaylist);
+
+      currentSongRef.current = song;
+      setCurrentSongState(song);
+
+      currentIndexRef.current = safeIndex;
+      setCurrentIndexState(safeIndex);
+
+      // Reset playback progress for the selected track.
+      seekingRef.current = false;
+      setCurrentTime(0);
+      durationRef.current = 0;
+      setDuration(0);
+      resetPlaybackTrackers();
+
+      // Resolve the audio source.
+      const audioSource = getSongAudioSource(song);
+      const url = getAudioUrl(audioSource);
+
+      if (!url) {
+        console.error("Audio URL is missing for song:", song);
+        setPlaying(false);
+        return;
+      }
+
+      // Load or restart the selected audio source.
+      if (audio.src !== url) {
+        audio.pause();
+        audio.src = url;
+        audio.load();
+      } else {
+        audio.currentTime = 0;
+      }
+
+      audio.volume = mutedRef.current ? 0 : volumeRef.current;
+
+      // Start playback.
+      await audio.play();
+
+      // Ignore stale playback requests.
+      if (
+        !mountedRef.current ||
+        epoch !== playbackEpochRef.current ||
+        activeUserIdRef.current !== userId
+      ) {
+        audio.pause();
+        return;
+      }
+
+      setPlaying(true);
+
+      // Update duration if metadata is already available.
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        durationRef.current = audio.duration;
+        setDuration(audio.duration);
+      }
+
+      setCurrentTime(
+        Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+      );
+
+      // Only MongoDB songs should create database listening sessions.
+      if (song._id && activeUserIdRef.current === userId) {
+        void createListeningSession(song);
+      }
+    } catch (error) {
+      // A source replacement can interrupt an earlier play request.
+      if (
+        error?.name === "AbortError" ||
+        epoch !== playbackEpochRef.current
+      ) {
+        return;
+      }
+
+      console.error("Play song error:", error);
+      setPlaying(false);
+    }
+  },
+  [
+    userId,
+    isAuthenticated,
+    accumulateListeningTime,
+    finishListeningSession,
+    resetPlaybackTrackers,
+    getAudioUrl,
+    createListeningSession,
+  ],
+);
 
   // =====================================================
   // PUBLIC PLAY SONG FUNCTION
   // =====================================================
 
- const playSong = useCallback(
-  (song, index = 0, playlist = songsRef.current, source = "library") =>
-    playSongInternal(song, index, playlist, source),
-  [playSongInternal],
-);
+  const playSong = useCallback(
+    (song, index = 0, playlist = songsRef.current, source = "library") =>
+      playSongInternal(song, index, playlist, source),
+    [playSongInternal],
+  );
 
   // =====================================================
   // PLAY / PAUSE
   // =====================================================
 
-  const togglePlay = useCallback(async () => {
- const audio = audioRef.current;
-const song = currentSongRef.current;
 
-if (!isAuthenticated || !userId) {
-  setLoginPromptOpen(true);
-  return;
-}
+const togglePlay = useCallback(async () => {
+  const audio = audioRef.current;
+  const song = currentSongRef.current;
 
-if (!audio || !song) return;
-    if (!audio || !song || !userId) return;
-    if (activeUserIdRef.current !== userId) return;
+  if (!isAuthenticated || !userId) {
+    setLoginPromptOpen(true);
+    return;
+  }
 
-    try {
-      if (!audio.paused) {
-        accumulateListeningTime(true);
-        audio.pause();
-        setPlaying(false);
-        void saveListeningProgress(false, true);
-        return;
-      }
+  if (!audio || !song || !userId) return;
 
-      // Ensure the selected song has a valid audio URL.
-      const url = getAudioUrl(song.audioFile);
+  if (
+    !userStateReadyRef.current ||
+    activeUserIdRef.current !== userId ||
+    loadedUserIdRef.current !== userId
+  ) {
+    return;
+  }
 
-      if (!url) {
-        console.error("Audio URL is missing for song:", song.title);
-        setPlaying(false);
-        return;
-      }
-
-      // Reload the source if it does not match the selected song.
-      if (audio.src !== url) {
-        audio.pause();
-        audio.src = url;
-        audio.load();
-      }
-
-      // Wait for the browser to recognize the audio source.
-      if (audio.readyState === HTMLMediaElement.HAVE_NOTHING) {
-        await new Promise((resolve, reject) => {
-          const cleanup = () => {
-            audio.removeEventListener("canplay", onCanPlay);
-            audio.removeEventListener("error", onError);
-          };
-
-          const onCanPlay = () => {
-            cleanup();
-            resolve();
-          };
-
-          const onError = () => {
-            cleanup();
-            reject(
-              new Error(
-                `Audio failed to load. Media error code: ${
-                  audio.error?.code ?? "unknown"
-                }`,
-              ),
-            );
-          };
-
-          audio.addEventListener("canplay", onCanPlay, {
-            once: true,
-          });
-          audio.addEventListener("error", onError, {
-            once: true,
-          });
-
-          audio.load();
-        });
-      }
-
-      audio.volume = mutedRef.current ? 0 : volumeRef.current;
-
-      await audio.play();
-
-      setPlaying(true);
-
-      if (
-        !listeningSessionRef.current ||
-        sessionSongIdRef.current !== String(song._id)
-      ) {
-        void createListeningSession(song);
-      }
-    } catch (error) {
-      console.error("Toggle play error:", {
-        name: error?.name,
-        message: error?.message,
-        audioSrc: audio.currentSrc || audio.src,
-        readyState: audio.readyState,
-        networkState: audio.networkState,
-        mediaErrorCode: audio.error?.code ?? null,
-      });
-
+  try {
+    // Pause the current track.
+    if (!audio.paused) {
+      accumulateListeningTime(true);
+      audio.pause();
       setPlaying(false);
+
+      // Preserve existing progress-saving behavior.
+      void saveListeningProgress(false, true);
+      return;
     }
-  }, [
-    userId,
-    accumulateListeningTime,
-    saveListeningProgress,
-    createListeningSession,
-    getAudioUrl,
-  ]);
+
+    // Resolve the correct audio field for the selected song.
+    const audioSource = getSongAudioSource(song);
+    const url = getAudioUrl(audioSource);
+
+    if (!url) {
+      console.error("Audio URL is missing for song:", song.title, song);
+      setPlaying(false);
+      return;
+    }
+
+    // Identify this playback request so stale requests cannot update state.
+    const epoch = playbackEpochRef.current;
+    const selectedSongId = getTrackId(song);
+
+    // Reload the source if it differs from the selected track.
+    if (audio.src !== url) {
+      audio.pause();
+      audio.src = url;
+      audio.load();
+    }
+
+    // Wait until the browser recognizes the audio source.
+    if (audio.readyState === HTMLMediaElement.HAVE_NOTHING) {
+      await new Promise((resolve, reject) => {
+        let settled = false;
+
+        const cleanup = () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          audio.removeEventListener("error", onError);
+        };
+
+        const onCanPlay = () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve();
+        };
+
+        const onError = () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+
+          reject(
+            new Error(
+              `Audio failed to load. Media error code: ${
+                audio.error?.code ?? "unknown"
+              }`,
+            ),
+          );
+        };
+
+        audio.addEventListener("canplay", onCanPlay, { once: true });
+        audio.addEventListener("error", onError, { once: true });
+
+        // Recheck in case metadata became available before the listeners
+        // were attached.
+        if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+          onCanPlay();
+        } else {
+          audio.load();
+        }
+      });
+    }
+
+    // Stop if the selected song or playback request changed while loading.
+    if (
+      !mountedRef.current ||
+      epoch !== playbackEpochRef.current ||
+      activeUserIdRef.current !== userId ||
+      getTrackId(currentSongRef.current) !== selectedSongId
+    ) {
+      return;
+    }
+
+    // Apply the current volume and mute state.
+    audio.volume = mutedRef.current ? 0 : volumeRef.current;
+
+    await audio.play();
+
+    // Check again after the asynchronous play request.
+    if (
+      !mountedRef.current ||
+      epoch !== playbackEpochRef.current ||
+      activeUserIdRef.current !== userId ||
+      getTrackId(currentSongRef.current) !== selectedSongId
+    ) {
+      audio.pause();
+      return;
+    }
+
+    setPlaying(true);
+
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      durationRef.current = audio.duration;
+      setDuration(audio.duration);
+    }
+
+    setCurrentTime(
+      Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+    );
+
+    // Only MongoDB songs should create database listening sessions.
+    if (song._id) {
+      void createListeningSession(song);
+    }
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return;
+    }
+
+    console.error("Toggle play error:", {
+      name: error?.name,
+      message: error?.message,
+      audioSrc: audio?.currentSrc || audio?.src,
+      readyState: audio?.readyState,
+      networkState: audio?.networkState,
+      mediaErrorCode: audio?.error?.code ?? null,
+    });
+
+    setPlaying(false);
+  }
+}, [
+  userId,
+  isAuthenticated,
+  accumulateListeningTime,
+  saveListeningProgress,
+  createListeningSession,
+  getAudioUrl,
+]);
+
 
   // =====================================================
   // NEXT SONG
   // =====================================================
 
+  const nextSong = useCallback(async () => {
+  if (!isAuthenticated || !userId) {
+    setLoginPromptOpen(true);
+    return;
+  }
 
-const nextSong = useCallback(async () => {
-if (!isAuthenticated || !userId) {
-  setLoginPromptOpen(true);
-  return;
-}
+  if (
+    !userStateReadyRef.current ||
+    activeUserIdRef.current !== userId ||
+    loadedUserIdRef.current !== userId
+  ) {
+    return;
+  }
 
-  if (!userId || activeUserIdRef.current !== userId) return;
-
-  const currentSongId = String(currentSongRef.current?._id || "");
+  const currentSongId = getTrackId(currentSongRef.current);
   if (!currentSongId) return;
 
+  // Keep songs that have an ID and a usable audio source.
   const validSongs = (list) =>
     Array.isArray(list)
-      ? list.filter((song) => song?._id && song.audioFile)
+      ? list.filter(
+          (song) =>
+            getTrackId(song) &&
+            getSongAudioSource(song),
+        )
       : [];
 
   const chooseRandomLibrarySong = async () => {
@@ -1495,7 +1655,7 @@ if (!isAuthenticated || !userId) {
     const candidates =
       library.length > 1
         ? library.filter(
-            (song) => String(song._id) !== currentSongId,
+            (song) => getTrackId(song) !== currentSongId,
           )
         : library;
 
@@ -1505,7 +1665,7 @@ if (!isAuthenticated || !userId) {
       candidates[Math.floor(Math.random() * candidates.length)];
 
     const selectedIndex = library.findIndex(
-      (song) => String(song._id) === String(selected._id),
+      (song) => getTrackId(song) === getTrackId(selected),
     );
 
     await playSongInternal(
@@ -1519,33 +1679,27 @@ if (!isAuthenticated || !userId) {
   try {
     // 1. Playlist mode: never fall back to the library.
     if (playbackSourceRef.current === "playlist") {
-      const playlist = activePlaylistRef.current || [];
-
-      console.log(
-        "[Playlist Next]",
-        {
-          currentSong: currentSongId,
-          playlistIds: playlist.map((song) => String(song._id)),
-        },
-      );
+      const playlist = validSongs(activePlaylistRef.current);
 
       if (!playlist.length) {
         audioRef.current?.pause();
         setPlaying(false);
-        console.error("Playlist mode is active, but its song list is empty.");
+        console.error(
+          "Playlist mode is active, but its song list is empty.",
+        );
         return;
       }
 
       const currentIndex = playlist.findIndex(
-        (song) => String(song._id) === currentSongId,
+        (song) => getTrackId(song) === currentSongId,
       );
 
-      // If the current song isn't in this playlist, do not play an
-      // arbitrary song from the library.
       if (currentIndex === -1) {
         audioRef.current?.pause();
         setPlaying(false);
-        console.error("Current song is not part of the active playlist.");
+        console.error(
+          "Current song is not part of the active playlist.",
+        );
         return;
       }
 
@@ -1562,7 +1716,12 @@ if (!isAuthenticated || !userId) {
           "playlist",
         );
       } else if (shouldRepeatPlaylist) {
-        await playSongInternal(playlist[0], 0, playlist, "playlist");
+        await playSongInternal(
+          playlist[0],
+          0,
+          playlist,
+          "playlist",
+        );
       } else {
         audioRef.current?.pause();
         setPlaying(false);
@@ -1577,24 +1736,34 @@ if (!isAuthenticated || !userId) {
       playbackSourceRef.current === "queue" ||
       activeQueueRef.current
     ) {
-      const queuedSongs = validSongs(queueRef.current);
+      const originalQueue = Array.isArray(queueRef.current)
+        ? queueRef.current
+        : [];
+
+      const queuedSongs = validSongs(originalQueue);
 
       if (queuedSongs.length > 0) {
         const nextQueuedSong = queuedSongs[0];
-        const remainingQueue = queueRef.current.slice(1);
+        const nextQueuedId = getTrackId(nextQueuedSong);
+        const remainingQueue = originalQueue.filter(
+          (song, index) =>
+            index !== originalQueue.findIndex(
+              (item) => getTrackId(item) === nextQueuedId,
+            ),
+        );
 
         queueRef.current = remainingQueue;
         setQueueState(remainingQueue);
 
         const library = validSongs(librarySongsRef.current);
         const libraryIndex = library.findIndex(
-          (song) => String(song._id) === String(nextQueuedSong._id),
+          (song) => getTrackId(song) === nextQueuedId,
         );
 
         await playSongInternal(
           nextQueuedSong,
           libraryIndex >= 0 ? libraryIndex : 0,
-          library,
+          library.length ? library : [nextQueuedSong],
           "queue",
         );
 
@@ -1610,697 +1779,760 @@ if (!isAuthenticated || !userId) {
   } catch (error) {
     console.error("Next song error:", error);
   }
-}, [userId, playSongInternal, setQueueState]);
-
+}, [
+  userId,
+  isAuthenticated,
+  playSongInternal,
+  setQueueState,
+]);
 
   // =====================================================
   // PREVIOUS SONG
   // =====================================================
 
+ const previousSong = useCallback(async () => {
+  if (!isAuthenticated || !userId) {
+    setLoginPromptOpen(true);
+    return;
+  }
 
-const previousSong = useCallback(async () => {
-if (!isAuthenticated || !userId) {
-  setLoginPromptOpen(true);
-  return;
-}
+  if (
+    !userStateReadyRef.current ||
+    activeUserIdRef.current !== userId ||
+    loadedUserIdRef.current !== userId
+  ) {
+    return;
+  }
 
-  if (!userId || activeUserIdRef.current !== userId) return;
-
-  const currentSongId = String(currentSongRef.current?._id || "");
+  const currentSongId = getTrackId(currentSongRef.current);
   if (!currentSongId) return;
 
   const validSongs = (list) =>
     Array.isArray(list)
-      ? list.filter((song) => song?._id && song.audioFile)
+      ? list.filter(
+          (song) =>
+            getTrackId(song) &&
+            getSongAudioSource(song),
+        )
       : [];
 
   const source = playbackSourceRef.current;
 
-  // Playlist: navigate only within the active playlist.
-  if (source === "playlist") {
-    const playlist = validSongs(activePlaylistRef.current);
+  try {
+    // Playlist: navigate only within the active playlist.
+    if (source === "playlist") {
+      const playlist = validSongs(activePlaylistRef.current);
 
-    if (!playlist.length) return;
+      if (!playlist.length) return;
 
-    const currentIndex = playlist.findIndex(
-      (song) => String(song._id) === currentSongId,
-    );
+      const currentIndex = playlist.findIndex(
+        (song) => getTrackId(song) === currentSongId,
+      );
 
-    if (currentIndex === -1) {
-      console.error("Current song is not in the active playlist.");
+      if (currentIndex === -1) {
+        console.error("Current song is not in the active playlist.");
+        return;
+      }
+
+      const previousIndex =
+        currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
+
+      await playSongInternal(
+        playlist[previousIndex],
+        previousIndex,
+        playlist,
+        "playlist",
+      );
+
       return;
     }
 
-    const previousIndex =
-      currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
+    // Queue: navigate within the active playback list.
+    if (source === "queue" || activeQueueRef.current) {
+      const queue = validSongs(songsRef.current);
 
-    await playSongInternal(
-      playlist[previousIndex],
-      previousIndex,
-      playlist,
-      "playlist",
-    );
+      if (queue.length < 2) return;
 
-    return;
-  }
-
-  // Queue: use the active queue context without switching to playlist mode.
-  if (source === "queue" || activeQueueRef.current) {
-    const queue = validSongs(songsRef.current);
-
-    if (queue.length < 2) return;
-
-    const currentIndex = queue.findIndex(
-      (song) => String(song._id) === currentSongId,
-    );
-
-    if (currentIndex <= 0) return;
-
-    await playSongInternal(
-      queue[currentIndex - 1],
-      currentIndex - 1,
-      queue,
-      "queue",
-    );
-
-    return;
-  }
-
-  // Library: move backward through the library list.
-  const library = validSongs(librarySongsRef.current);
-
-  if (library.length < 2) return;
-
-  const currentIndex = library.findIndex(
-    (song) => String(song._id) === currentSongId,
-  );
-
-  if (currentIndex === -1) return;
-
-  const previousIndex =
-    currentIndex === 0 ? library.length - 1 : currentIndex - 1;
-
-  await playSongInternal(
-    library[previousIndex],
-    previousIndex,
-    library,
-    "library",
-  );
-}, [userId, playSongInternal]);
-
-
-
-  // =====================================================
-  // SEEK
-  // =====================================================
-
-  const seekSong = useCallback((time) => {
-    const audio = audioRef.current;
-
-    if (!audio) return;
-
-    const nextTime = Number(time);
-
-    if (!Number.isFinite(nextTime)) return;
-
-    const maxTime =
-      Number.isFinite(audio.duration) && audio.duration > 0
-        ? audio.duration
-        : durationRef.current || nextTime;
-
-    const safeTime = Math.max(0, Math.min(nextTime, maxTime));
-
-    seekingRef.current = true;
-
-    lastPlaybackTickRef.current = null;
-    previousPlaybackPositionRef.current = null;
-
-    audio.currentTime = safeTime;
-
-    setCurrentTime(safeTime);
-  }, []);
-
-  // =====================================================
-  // VOLUME
-  // =====================================================
-
-  const changeVolume = useCallback((value) => {
-    const safeVolume = Math.max(0, Math.min(1, Number(value)));
-
-    if (!Number.isFinite(safeVolume)) return;
-
-    volumeRef.current = safeVolume;
-    mutedRef.current = safeVolume === 0;
-
-    setVolume(safeVolume);
-    setMuted(safeVolume === 0);
-
-    if (audioRef.current) {
-      audioRef.current.volume = safeVolume;
-    }
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    if (mutedRef.current) {
-      const restored = volumeRef.current > 0 ? volumeRef.current : 1;
-
-      volumeRef.current = restored;
-      mutedRef.current = false;
-
-      if (audioRef.current) {
-        audioRef.current.volume = restored;
-      }
-
-      setVolume(restored);
-      setMuted(false);
-    } else {
-      mutedRef.current = true;
-
-      if (audioRef.current) {
-        audioRef.current.volume = 0;
-      }
-
-      setMuted(true);
-    }
-  }, []);
-
-  // =====================================================
-  // SLEEP TIMER
-  // =====================================================
-
-  const clearSleepTimerInterval = useCallback(() => {
-    if (sleepTimerIntervalRef.current !== null) {
-      clearInterval(sleepTimerIntervalRef.current);
-      sleepTimerIntervalRef.current = null;
-    }
-  }, []);
-
-  const startSleepTimer = useCallback(
-    (minutes) => {
-      clearSleepTimerInterval();
-
-      if (minutes === "end") {
-        sleepTimerDeadlineRef.current = null;
-        sleepTimerModeRef.current = "end";
-
-        setSleepTimer("end");
-
-        return;
-      }
-
-      const seconds = Number(minutes) * 60;
-
-      if (!Number.isFinite(seconds) || seconds <= 0) {
-        return;
-      }
-
-      sleepTimerModeRef.current = "timer";
-
-      sleepTimerDeadlineRef.current = Date.now() + seconds * 1000;
-
-      setSleepTimer(Math.ceil(seconds));
-    },
-    [clearSleepTimerInterval],
-  );
-
-  const cancelSleepTimer = useCallback(() => {
-    clearSleepTimerInterval();
-
-    sleepTimerDeadlineRef.current = null;
-    sleepTimerModeRef.current = null;
-
-    setSleepTimer(null);
-  }, [clearSleepTimerInterval]);
-
-  useEffect(() => {
-    clearSleepTimerInterval();
-
-    if (sleepTimer === null || sleepTimer === "end") {
-      return undefined;
-    }
-
-    const updateCountdown = () => {
-      const deadline = sleepTimerDeadlineRef.current;
-
-      if (!deadline) return;
-
-      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-
-      if (remaining <= 0) {
-        clearSleepTimerInterval();
-
-        sleepTimerDeadlineRef.current = null;
-        sleepTimerModeRef.current = null;
-
-        accumulateListeningTime(true);
-
-        audioRef.current?.pause();
-
-        setPlaying(false);
-
-        void saveListeningProgress(false, true);
-
-        setSleepTimer(null);
-
-        return;
-      }
-
-      setSleepTimer(remaining);
-    };
-
-    updateCountdown();
-
-    sleepTimerIntervalRef.current = setInterval(updateCountdown, 1000);
-
-    return clearSleepTimerInterval;
-  }, [
-    sleepTimer,
-    clearSleepTimerInterval,
-    accumulateListeningTime,
-    saveListeningProgress,
-  ]);
-
-  const sleepTimerDisplay = useMemo(() => {
-    if (sleepTimer === null) return "";
-
-    if (sleepTimer === "end") {
-      return "End of song";
-    }
-
-    const mins = Math.floor(sleepTimer / 60);
-    const secs = sleepTimer % 60;
-
-    return `${mins}:${String(secs).padStart(2, "0")}`;
-  }, [sleepTimer]);
-
-  // =====================================================
-  // AUDIO EVENTS
-  // =====================================================
-
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    if (!audio) return undefined;
-
-    let lastUiTime = -1;
-
-    const updateTime = (force = false) => {
-      const nextTime = Number(audio.currentTime);
-
-      if (!Number.isFinite(nextTime) || nextTime < 0) {
-        return;
-      }
-
-      if (force || lastUiTime < 0 || Math.abs(nextTime - lastUiTime) >= 0.25) {
-        lastUiTime = nextTime;
-
-        setCurrentTime((previous) =>
-          Math.abs(previous - nextTime) >= 0.02 ? nextTime : previous,
-        );
-      }
-    };
-
-    const updateDuration = () => {
-      const nextDuration =
-        Number.isFinite(audio.duration) && audio.duration > 0
-          ? audio.duration
-          : 0;
-
-      durationRef.current = nextDuration;
-
-      setDuration(nextDuration);
-    };
-
-    const handlePlay = () => {
-      setPlaying(true);
-
-      lastPlaybackTickRef.current = performance.now();
-
-      previousPlaybackPositionRef.current = Number(audio.currentTime) || 0;
-    };
-
-    const handlePause = () => {
-      lastPlaybackTickRef.current = null;
-      previousPlaybackPositionRef.current = null;
-
-      setPlaying(false);
-    };
-
-    const handleSeeking = () => {
-      seekingRef.current = true;
-
-      lastPlaybackTickRef.current = null;
-      previousPlaybackPositionRef.current = null;
-    };
-
-    const handleSeeked = () => {
-      seekingRef.current = false;
-
-      updateTime(true);
-
-      previousPlaybackPositionRef.current = Number(audio.currentTime) || 0;
-
-      lastPlaybackTickRef.current =
-        !audio.paused && !audio.ended ? performance.now() : null;
-    };
-    const loadedMetadata = () => {
-      console.log("[AUDIO METADATA]", {
-        src: audio.currentSrc || audio.src,
-        duration: audio.duration,
-        readyState: audio.readyState,
-        error: audio.error?.code ?? null,
-      });
-
-      updateDuration();
-      updateTime(true);
-    };
-
-    const handleTimeUpdate = () => {
-      console.log("[AUDIO TIME]", {
-        currentTime: audio.currentTime,
-        duration: audio.duration,
-        paused: audio.paused,
-      });
-
-      updateTime();
-      accumulateListeningTime();
-
-      if (!listeningSessionRef.current || audio.paused || audio.ended) {
-        return;
-      }
-
-      const listened = Math.floor(listenedSecondsRef.current);
-
-      if (listened - lastListeningUpdateRef.current >= PROGRESS_SAVE_INTERVAL) {
-        void saveListeningProgress(false);
-      }
-    };
-
- const handleEnded = async () => {
-  accumulateListeningTime(true);
-
-  await finishListeningSession(true);
-
-  if (!mountedRef.current) return;
-
-  // Stop after the current song if the sleep timer is set to "end".
-  if (sleepTimerModeRef.current === "end") {
-    cancelSleepTimer();
-    audio.pause();
-    setPlaying(false);
-    return;
-  }
-
-  
-// Repeat the current song only when repeat-one mode is selected.
-// Playlist and queue navigation must otherwise follow their own source.
-if (
-  repeatRef.current &&
-  playbackSourceRef.current !== "playlist" &&
-  playbackSourceRef.current !== "queue"
-) {
-  audio.currentTime = 0;
-
-  try {
-    await audio.play();
-    setPlaying(true);
-    void createListeningSession(currentSongRef.current);
-  } catch (error) {
-    console.error("Repeat play error:", error);
-    setPlaying(false);
-  }
-
-  return;
-}
-
-  const validSongs = (list) =>
-    Array.isArray(list)
-      ? list.filter((song) => song?._id && song.audioFile)
-      : [];
-
-  const currentSongId = String(currentSongRef.current?._id || "");
-
-  // 1. Playlist playback: stay within the active playlist.
-if (playbackSourceRef.current === "playlist") {
-  const playlist = activePlaylistRef.current || [];
-
-  if (playlist.length === 0) {
-    audioRef.current?.pause();
-    setPlaying(false);
-    return;
-  }
-
-  const currentIndex = playlist.findIndex(
-    (song) =>
-      String(song?._id) === String(currentSongRef.current?._id),
-  );
-
-  const nextIndex = currentIndex + 1;
-
-  if (nextIndex < playlist.length) {
-    await playSongInternal(
-      playlist[nextIndex],
-      nextIndex,
-      playlist,
-      "playlist",
-    );
-  } else if (repeatRef.current) {
-    await playSongInternal(playlist[0], 0, playlist, "playlist");
-  } else {
-    // Do not fall back to a random library song.
-    audioRef.current?.pause();
-    setPlaying(false);
-  }
-
-  return;
-}
-
-  // 2. Queue playback: consume queued songs in order.
-  if (
-    playbackSourceRef.current === "queue" ||
-    activeQueueRef.current
-  ) {
-    const queuedSongs = validSongs(queueRef.current);
-
-    if (queuedSongs.length > 0) {
-      const nextQueuedSong = queuedSongs[0];
-      const remainingQueue = queueRef.current.slice(1);
-
-      queueRef.current = remainingQueue;
-      setQueueState(remainingQueue);
-
-      const library = validSongs(librarySongsRef.current);
-
-      const libraryIndex = library.findIndex(
-        (song) =>
-          String(song._id) === String(nextQueuedSong._id),
+      const currentIndex = queue.findIndex(
+        (song) => getTrackId(song) === currentSongId,
       );
 
+      if (currentIndex <= 0) return;
+
       await playSongInternal(
-        nextQueuedSong,
-        libraryIndex >= 0 ? libraryIndex : 0,
-        library,
+        queue[currentIndex - 1],
+        currentIndex - 1,
+        queue,
         "queue",
       );
 
       return;
     }
 
-    // Queue exhausted: return to random library playback.
-    activeQueueRef.current = false;
-    playbackSourceRef.current = "library";
-  }
+    // Library: move backward through the library list.
+    const library = validSongs(librarySongsRef.current);
 
-  // 3. Individual-song playback: choose randomly from the full library.
-  const library = validSongs(librarySongsRef.current);
+    if (library.length < 2) return;
 
-  if (library.length === 0) {
-    console.warn(
-      "The full song library is empty. Make sure setLibrarySongs() receives all songs.",
+    const currentIndex = library.findIndex(
+      (song) => getTrackId(song) === currentSongId,
     );
-    setPlaying(false);
-    return;
+
+    if (currentIndex === -1) return;
+
+    const previousIndex =
+      currentIndex === 0 ? library.length - 1 : currentIndex - 1;
+
+    await playSongInternal(
+      library[previousIndex],
+      previousIndex,
+      library,
+      "library",
+    );
+  } catch (error) {
+    console.error("Previous song error:", error);
+  }
+}, [
+  userId,
+  isAuthenticated,
+  playSongInternal,
+]);
+
+  // =====================================================
+  // SEEK
+  // =====================================================
+
+const seekSong = useCallback((time) => {
+  const audio = audioRef.current;
+
+  if (!audio) return;
+
+  const nextTime = Number(time);
+  if (!Number.isFinite(nextTime)) return;
+
+  const maxTime =
+    Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : Math.max(0, Number(durationRef.current) || nextTime);
+
+  const safeTime = Math.max(0, Math.min(nextTime, maxTime));
+
+  try {
+    seekingRef.current = true;
+
+    lastPlaybackTickRef.current = null;
+    previousPlaybackPositionRef.current = null;
+
+    audio.currentTime = safeTime;
+    setCurrentTime(safeTime);
+  } catch (error) {
+    seekingRef.current = false;
+    console.warn("Could not seek to the requested position:", error);
+  }
+}, []);
+
+  // =====================================================
+  // VOLUME
+  // =====================================================
+
+const changeVolume = useCallback((value) => {
+  const numericVolume = Number(value);
+
+  if (!Number.isFinite(numericVolume)) return;
+
+  const safeVolume = Math.max(0, Math.min(1, numericVolume));
+  const shouldMute = safeVolume === 0;
+
+  volumeRef.current = safeVolume;
+  mutedRef.current = shouldMute;
+
+  setVolume(safeVolume);
+  setMuted(shouldMute);
+
+  if (audioRef.current) {
+    audioRef.current.volume = shouldMute ? 0 : safeVolume;
+  }
+}, []);
+
+const toggleMute = useCallback(() => {
+  if (mutedRef.current) {
+    const restoredVolume =
+      volumeRef.current > 0 ? volumeRef.current : 1;
+
+    volumeRef.current = restoredVolume;
+    mutedRef.current = false;
+
+    if (audioRef.current) {
+      audioRef.current.volume = restoredVolume;
+    }
+
+    setVolume(restoredVolume);
+    setMuted(false);
+  } else {
+    mutedRef.current = true;
+
+    if (audioRef.current) {
+      audioRef.current.volume = 0;
+    }
+
+    setMuted(true);
+  }
+}, []);
+
+  // =====================================================
+  // SLEEP TIMER
+  // =====================================================
+
+const clearSleepTimerInterval = useCallback(() => {
+  if (sleepTimerIntervalRef.current !== null) {
+    clearInterval(sleepTimerIntervalRef.current);
+    sleepTimerIntervalRef.current = null;
+  }
+}, []);
+
+const startSleepTimer = useCallback(
+  (minutes) => {
+    clearSleepTimerInterval();
+
+    if (minutes === "end") {
+      sleepTimerDeadlineRef.current = null;
+      sleepTimerModeRef.current = "end";
+
+      setSleepTimer("end");
+      return;
+    }
+
+    const numericMinutes = Number(minutes);
+
+    if (!Number.isFinite(numericMinutes) || numericMinutes <= 0) {
+      sleepTimerDeadlineRef.current = null;
+      sleepTimerModeRef.current = null;
+      setSleepTimer(null);
+      return;
+    }
+
+    const seconds = numericMinutes * 60;
+
+    sleepTimerModeRef.current = "timer";
+    sleepTimerDeadlineRef.current = Date.now() + seconds * 1000;
+
+    setSleepTimer(Math.ceil(seconds));
+  },
+  [clearSleepTimerInterval],
+);
+
+const cancelSleepTimer = useCallback(() => {
+  clearSleepTimerInterval();
+
+  sleepTimerDeadlineRef.current = null;
+  sleepTimerModeRef.current = null;
+
+  setSleepTimer(null);
+}, [clearSleepTimerInterval]);
+
+useEffect(() => {
+  clearSleepTimerInterval();
+
+  if (sleepTimer === null || sleepTimer === "end") {
+    return undefined;
   }
 
-  // Avoid immediately choosing the same song when alternatives exist.
-  const candidates =
-    library.length > 1
-      ? library.filter(
-          (song) => String(song._id) !== currentSongId,
+  const updateCountdown = () => {
+    const deadline = sleepTimerDeadlineRef.current;
+
+    if (deadline === null) return;
+
+    const remaining = Math.max(
+      0,
+      Math.ceil((deadline - Date.now()) / 1000),
+    );
+
+    if (remaining <= 0) {
+      clearSleepTimerInterval();
+
+      sleepTimerDeadlineRef.current = null;
+      sleepTimerModeRef.current = null;
+
+      // Account for listening time before pausing.
+      accumulateListeningTime(true);
+
+      audioRef.current?.pause();
+      setPlaying(false);
+
+      // Save the final progress for the current listening session.
+      void saveListeningProgress(false, true);
+
+      setSleepTimer(null);
+      return;
+    }
+
+    setSleepTimer(remaining);
+  };
+
+  updateCountdown();
+
+  // updateCountdown may already have expired the timer.
+  if (sleepTimerDeadlineRef.current !== null) {
+    sleepTimerIntervalRef.current = setInterval(updateCountdown, 1000);
+  }
+
+  return clearSleepTimerInterval;
+}, [
+  sleepTimer,
+  clearSleepTimerInterval,
+  accumulateListeningTime,
+  saveListeningProgress,
+]);
+
+const sleepTimerDisplay = useMemo(() => {
+  if (sleepTimer === null) return "";
+
+  if (sleepTimer === "end") {
+    return "End of song";
+  }
+
+  const totalSeconds = Math.max(0, Number(sleepTimer) || 0);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}, [sleepTimer]);
+
+  // =====================================================
+  // AUDIO EVENTS
+  // =====================================================
+
+useEffect(() => {
+  const audio = audioRef.current;
+
+  if (!audio) return undefined;
+
+  let lastUiTime = -1;
+
+  const getTrackId = (song) => {
+    const id = song?._id ?? song?.id;
+    return id == null || String(id).trim() === "" ? null : String(id);
+  };
+
+  const getTrackSource = (song) =>
+    song?.audioFile || song?.audioUrl || song?.audio || "";
+
+  const updateTime = (force = false) => {
+    const nextTime = Number(audio.currentTime);
+
+    if (!Number.isFinite(nextTime) || nextTime < 0) return;
+
+    if (
+      force ||
+      lastUiTime < 0 ||
+      Math.abs(nextTime - lastUiTime) >= 0.25
+    ) {
+      lastUiTime = nextTime;
+
+      setCurrentTime((previous) =>
+        Math.abs(previous - nextTime) >= 0.02 ? nextTime : previous,
+      );
+    }
+  };
+
+  const updateDuration = () => {
+    const nextDuration =
+      Number.isFinite(audio.duration) && audio.duration > 0
+        ? audio.duration
+        : 0;
+
+    durationRef.current = nextDuration;
+    setDuration(nextDuration);
+  };
+
+  const handlePlay = () => {
+    setPlaying(true);
+    lastPlaybackTickRef.current = performance.now();
+    previousPlaybackPositionRef.current = Number(audio.currentTime) || 0;
+  };
+
+  const handlePause = () => {
+    lastPlaybackTickRef.current = null;
+    previousPlaybackPositionRef.current = null;
+    setPlaying(false);
+  };
+
+  const handleSeeking = () => {
+    seekingRef.current = true;
+    lastPlaybackTickRef.current = null;
+    previousPlaybackPositionRef.current = null;
+  };
+
+  const handleSeeked = () => {
+    seekingRef.current = false;
+    updateTime(true);
+
+    previousPlaybackPositionRef.current = Number(audio.currentTime) || 0;
+    lastPlaybackTickRef.current =
+      !audio.paused && !audio.ended ? performance.now() : null;
+  };
+
+  const handleLoadedMetadata = () => {
+    updateDuration();
+    updateTime(true);
+  };
+
+  const handleTimeUpdate = () => {
+    updateTime();
+    accumulateListeningTime();
+
+    if (!listeningSessionRef.current || audio.paused || audio.ended) {
+      return;
+    }
+
+    const listened = Math.floor(listenedSecondsRef.current);
+
+    if (
+      listened - lastListeningUpdateRef.current >=
+      PROGRESS_SAVE_INTERVAL
+    ) {
+      void saveListeningProgress(false);
+    }
+  };
+
+  const validSongs = (list) =>
+    Array.isArray(list)
+      ? list.filter(
+          (song) => getTrackId(song) && getTrackSource(song),
         )
-      : library;
+      : [];
 
-  if (candidates.length === 0) {
-    setPlaying(false);
-    return;
-  }
+  const handleEnded = async () => {
+    accumulateListeningTime(true);
 
-  const selected =
-    candidates[Math.floor(Math.random() * candidates.length)];
+    try {
+      await finishListeningSession(true);
+    } catch (error) {
+      console.error("Could not finish listening session:", error);
+    }
 
-  const selectedIndex = library.findIndex(
-    (song) => String(song._id) === String(selected._id),
-  );
+    if (!mountedRef.current) return;
 
-  await playSongInternal(
-    selected,
-    selectedIndex,
-    library,
-    "library",
-  );
-};
+    // Stop after the current song when the sleep timer is set to "end".
+    if (sleepTimerModeRef.current === "end") {
+      cancelSleepTimer();
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
 
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    audio.addEventListener("loadedmetadata", loadedMetadata);
-    audio.addEventListener("durationchange", updateDuration);
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("seeking", handleSeeking);
-    audio.addEventListener("seeked", handleSeeked);
-    audio.addEventListener("ended", handleEnded);
+    const repeatMode = repeatRef.current;
+    const source = playbackSourceRef.current;
+    const currentSong = currentSongRef.current;
+    const currentSongId = getTrackId(currentSong);
 
-    return () => {
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-      audio.removeEventListener("loadedmetadata", loadedMetadata);
-      audio.removeEventListener("durationchange", updateDuration);
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("seeking", handleSeeking);
-      audio.removeEventListener("seeked", handleSeeked);
-      audio.removeEventListener("ended", handleEnded);
-    };
-  }, [
-    accumulateListeningTime,
-    saveListeningProgress,
-    finishListeningSession,
-    createListeningSession,
-    playSongInternal,
-    cancelSleepTimer,
-  ]);
+    // Repeat-one should replay the current song, not advance the queue.
+    if (
+      repeatMode === "one" ||
+      repeatMode === "song" ||
+      repeatMode === 1
+    ) {
+      audio.currentTime = 0;
+
+      try {
+        await audio.play();
+
+        if (!mountedRef.current) {
+          audio.pause();
+          return;
+        }
+
+        setPlaying(true);
+        void createListeningSession(currentSong);
+      } catch (error) {
+        console.error("Repeat play error:", error);
+        setPlaying(false);
+      }
+
+      return;
+    }
+
+    // Playlist playback stays within the active playlist.
+    if (source === "playlist") {
+      const playlist = validSongs(activePlaylistRef.current);
+
+      if (!playlist.length) {
+        setPlaying(false);
+        return;
+      }
+
+      const currentIndex = playlist.findIndex(
+        (song) => getTrackId(song) === currentSongId,
+      );
+
+      if (currentIndex < 0) {
+        setPlaying(false);
+        return;
+      }
+
+      const nextIndex = currentIndex + 1;
+
+      if (nextIndex < playlist.length) {
+        await playSongInternal(
+          playlist[nextIndex],
+          nextIndex,
+          playlist,
+          "playlist",
+        );
+      } else if (
+        repeatMode === true ||
+        repeatMode === "all" ||
+        repeatMode === "playlist"
+      ) {
+        await playSongInternal(playlist[0], 0, playlist, "playlist");
+      } else {
+        setPlaying(false);
+      }
+
+      return;
+    }
+
+    // Queue playback consumes the next queued song in order.
+    if (source === "queue" || activeQueueRef.current) {
+      const originalQueue = Array.isArray(queueRef.current)
+        ? queueRef.current
+        : [];
+
+      const queuedSongs = validSongs(originalQueue);
+
+      if (queuedSongs.length > 0) {
+        const nextQueuedSong = queuedSongs[0];
+        const nextQueuedId = getTrackId(nextQueuedSong);
+
+        const removeIndex = originalQueue.findIndex(
+          (song) => getTrackId(song) === nextQueuedId,
+        );
+
+        const remainingQueue =
+          removeIndex >= 0
+            ? originalQueue.filter((_, index) => index !== removeIndex)
+            : originalQueue;
+
+        queueRef.current = remainingQueue;
+        setQueueState(remainingQueue);
+
+        const library = validSongs(librarySongsRef.current);
+        const libraryIndex = library.findIndex(
+          (song) => getTrackId(song) === nextQueuedId,
+        );
+
+        await playSongInternal(
+          nextQueuedSong,
+          libraryIndex >= 0 ? libraryIndex : 0,
+          library.length ? library : [nextQueuedSong],
+          "queue",
+        );
+
+        return;
+      }
+
+      activeQueueRef.current = false;
+      playbackSourceRef.current = "library";
+    }
+
+    // Individual-song playback chooses another song from the full library.
+    const library = validSongs(librarySongsRef.current);
+
+    if (!library.length) {
+      console.warn(
+        "The full song library is empty. Check setLibrarySongs().",
+      );
+      setPlaying(false);
+      return;
+    }
+
+    const candidates =
+      library.length > 1
+        ? library.filter((song) => getTrackId(song) !== currentSongId)
+        : library;
+
+    if (!candidates.length) {
+      setPlaying(false);
+      return;
+    }
+
+    const selected =
+      candidates[Math.floor(Math.random() * candidates.length)];
+
+    const selectedIndex = library.findIndex(
+      (song) => getTrackId(song) === getTrackId(selected),
+    );
+
+    await playSongInternal(
+      selected,
+      selectedIndex,
+      library,
+      "library",
+    );
+  };
+
+  audio.addEventListener("timeupdate", handleTimeUpdate);
+  audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+  audio.addEventListener("durationchange", updateDuration);
+  audio.addEventListener("play", handlePlay);
+  audio.addEventListener("pause", handlePause);
+  audio.addEventListener("seeking", handleSeeking);
+  audio.addEventListener("seeked", handleSeeked);
+  audio.addEventListener("ended", handleEnded);
+
+  return () => {
+    audio.removeEventListener("timeupdate", handleTimeUpdate);
+    audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.removeEventListener("durationchange", updateDuration);
+    audio.removeEventListener("play", handlePlay);
+    audio.removeEventListener("pause", handlePause);
+    audio.removeEventListener("seeking", handleSeeking);
+    audio.removeEventListener("seeked", handleSeeked);
+    audio.removeEventListener("ended", handleEnded);
+  };
+}, [
+  accumulateListeningTime,
+  saveListeningProgress,
+  finishListeningSession,
+  createListeningSession,
+  playSongInternal,
+  cancelSleepTimer,
+  setQueueState,
+]);
 
   // =====================================================
   // MOUNT / UNMOUNT
   // =====================================================
 
-  useEffect(() => {
-    mountedRef.current = true;
+useEffect(() => {
+  mountedRef.current = true;
 
-    return () => {
-      mountedRef.current = false;
+  return () => {
+    mountedRef.current = false;
 
-      clearSleepTimerInterval();
+    clearSleepTimerInterval();
 
-      const audio = audioRef.current;
+    const audio = audioRef.current;
+    const historyId = listeningSessionRef.current;
 
-      if (audio) {
-        audio.pause();
-      }
+    // Capture final progress before resetting the playback trackers.
+    const listenedSeconds = Math.max(
+      0,
+      Math.floor(Number(listenedSecondsRef.current) || 0),
+    );
 
-      resetPlaybackTrackers();
+    const position = Math.max(
+      0,
+      Number(audio?.currentTime) || 0,
+    );
 
-      const historyId = listeningSessionRef.current;
+    const audioDuration = Number(audio?.duration);
 
-      if (historyId) {
-        const listenedSeconds = Math.max(
-          0,
-          Math.floor(listenedSecondsRef.current),
-        );
+    const duration =
+      Number.isFinite(audioDuration) && audioDuration > 0
+        ? audioDuration
+        : Math.max(0, Number(durationRef.current) || 0);
 
-        updateListening(historyId, {
-          listenedSeconds,
-          completed: false,
-          position: Math.max(0, Number(audio?.currentTime) || 0),
-          duration:
-            Number.isFinite(audio?.duration) && audio.duration > 0
-              ? audio.duration
-              : Math.max(0, durationRef.current || 0),
-        }).catch((error) => {
-          console.error("Cleanup listening update error:", error);
-        });
-      }
-    };
-  }, [clearSleepTimerInterval, resetPlaybackTrackers]);
+    if (audio) {
+      audio.pause();
+    }
+
+    resetPlaybackTrackers();
+
+    // Save the final listening progress without blocking unmount.
+    if (historyId) {
+      void updateListening(historyId, {
+        listenedSeconds,
+        completed: false,
+        position,
+        duration,
+      }).catch((error) => {
+        console.error("Cleanup listening update error:", error);
+      });
+    }
+  };
+}, [clearSleepTimerInterval, resetPlaybackTrackers]);
 
   // =====================================================
   // CONTEXT VALUES
   // =====================================================
 
-const contextValue = useMemo(
-  () => ({
-    songs,
-    setSongs,
-    setLibrarySongs, // Added
+  const contextValue = useMemo(
+    () => ({
+      songs,
+      setSongs,
+      setLibrarySongs, // Added
 
-    currentSong,
-    currentIndex,
+      currentSong,
+      currentIndex,
 
-    queue,
-    setQueue,
-    addToQueue,
-    playNext,
-    removeFromQueue,
-    clearQueue,
+      queue,
+      setQueue,
+      addToQueue,
+      playNext,
+      removeFromQueue,
+      clearQueue,
 
-    playing,
-    duration,
+      playing,
+      duration,
 
-    playSong,
-    togglePlay,
-    nextSong,
-    previousSong,
-    seekSong,
+      playSong,
+      togglePlay,
+      nextSong,
+      previousSong,
+      seekSong,
 
-    volume,
-    muted,
-    changeVolume,
-    toggleMute,
+      volume,
+      muted,
+      changeVolume,
+      toggleMute,
 
-    shuffle,
-    repeat,
-    setShuffle,
-    setRepeat,
+      shuffle,
+      repeat,
+      setShuffle,
+      setRepeat,
 
-    audioRef,
+      audioRef,
 
-    sleepTimer,
-    sleepTimerActive: sleepTimer !== null,
-    sleepTimerDisplay,
-    startSleepTimer,
-    cancelSleepTimer,
-  }),
-  [
-    songs,
-    setSongs,
-    setLibrarySongs, // Added
-    currentSong,
-    currentIndex,
-    queue,
-    setQueue,
-    addToQueue,
-    playNext,
-    removeFromQueue,
-    clearQueue,
-    playing,
-    duration,
-    playSong,
-    togglePlay,
-    nextSong,
-    previousSong,
-    seekSong,
-    volume,
-    muted,
-    changeVolume,
-    toggleMute,
-    shuffle,
-    repeat,
-    setShuffle,
-    setRepeat,
-    sleepTimer,
-    sleepTimerDisplay,
-    startSleepTimer,
-    cancelSleepTimer,
-  ],
-);
+      sleepTimer,
+      sleepTimerActive: sleepTimer !== null,
+      sleepTimerDisplay,
+      startSleepTimer,
+      cancelSleepTimer,
+    }),
+    [
+      songs,
+      setSongs,
+      setLibrarySongs, // Added
+      currentSong,
+      currentIndex,
+      queue,
+      setQueue,
+      addToQueue,
+      playNext,
+      removeFromQueue,
+      clearQueue,
+      playing,
+      duration,
+      playSong,
+      togglePlay,
+      nextSong,
+      previousSong,
+      seekSong,
+      volume,
+      muted,
+      changeVolume,
+      toggleMute,
+      shuffle,
+      repeat,
+      setShuffle,
+      setRepeat,
+      sleepTimer,
+      sleepTimerDisplay,
+      startSleepTimer,
+      cancelSleepTimer,
+    ],
+  );
 
   const progressValue = useMemo(
     () => ({
@@ -2310,178 +2542,182 @@ const contextValue = useMemo(
     [currentTime, duration],
   );
 
- return (
-  <PlayerContext.Provider value={contextValue}>
-    <PlaybackProgressContext.Provider value={progressValue}>
-      {children}
+  return (
+    <PlayerContext.Provider value={contextValue}>
+      <PlaybackProgressContext.Provider value={progressValue}>
+        {children}
 
-
-{loginPromptOpen &&
-  typeof document !== "undefined" &&
-  createPortal(
-    <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
-      style={{
-        background: "rgba(0,0,0,0.72)",
-      }}
-      onClick={() => setLoginPromptOpen(false)}
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="guest-login-title"
-        className="relative my-auto w-full max-w-md rounded-[2rem] border p-6 sm:p-8"
-        style={{
-          background: "var(--theme-background, #252933)",
-          color: "var(--theme-text, #f5f5f7)",
-          borderColor: "var(--theme-border, rgba(255,255,255,0.05))",
-          boxShadow: `
+        {loginPromptOpen &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto p-4 sm:p-6"
+              style={{
+                background: "rgba(0,0,0,0.72)",
+              }}
+              onClick={() => setLoginPromptOpen(false)}
+            >
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="guest-login-title"
+                className="relative my-auto w-full max-w-md rounded-[2rem] border p-6 sm:p-8"
+                style={{
+                  background: "var(--theme-background, #252933)",
+                  color: "var(--theme-text, #f5f5f7)",
+                  borderColor: "var(--theme-border, rgba(255,255,255,0.05))",
+                  boxShadow: `
             18px 18px 40px var(--theme-shadowDark, #151820),
             -12px -12px 35px var(--theme-shadowLight, #343a48)
           `,
-        }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {/* Close button */}
-        <button
-          type="button"
-          aria-label="Close login popup"
-          onClick={() => setLoginPromptOpen(false)}
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-200 hover:scale-105 active:scale-95"
-          style={{
-            background: "var(--theme-background, #252933)",
-            color: "var(--theme-textMuted, #a0a7b5)",
-            boxShadow: `
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {/* Close button */}
+                <button
+                  type="button"
+                  aria-label="Close login popup"
+                  onClick={() => setLoginPromptOpen(false)}
+                  className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-200 hover:scale-105 active:scale-95"
+                  style={{
+                    background: "var(--theme-background, #252933)",
+                    color: "var(--theme-textMuted, #a0a7b5)",
+                    boxShadow: `
               5px 5px 10px var(--theme-shadowDark, #151820),
               -4px -4px 10px var(--theme-shadowLight, #343a48)
             `,
-          }}
-        >
-          <X size={19} />
-        </button>
+                  }}
+                >
+                  <X size={19} />
+                </button>
 
-        {/* Raised music icon */}
-        <div className="flex justify-center pt-3">
-          <div
-            className="flex h-24 w-24 items-center justify-center rounded-[2rem]"
-            style={{
-              background: "var(--theme-background, #252933)",
-              boxShadow: `
+                {/* Raised music icon */}
+                <div className="flex justify-center pt-3">
+                  <div
+                    className="flex h-24 w-24 items-center justify-center rounded-[2rem]"
+                    style={{
+                      background: "var(--theme-background, #252933)",
+                      boxShadow: `
                 8px 8px 18px var(--theme-shadowDark, #151820),
                 -7px -7px 18px var(--theme-shadowLight, #343a48),
                 inset 1px 1px 1px var(--theme-border, rgba(255,255,255,0.05))
               `,
-              color: "var(--theme-primary, #8c7cf7)",
-            }}
-          >
-            <Music2 size={42} strokeWidth={1.8} />
-          </div>
-        </div>
+                      color: "var(--theme-primary, #8c7cf7)",
+                    }}
+                  >
+                    <Music2 size={42} strokeWidth={1.8} />
+                  </div>
+                </div>
 
-        {/* Heading */}
-        <div className="mt-7 text-center">
-          <p
-            className="text-xs font-bold uppercase tracking-[0.35em]"
-            style={{ color: "var(--theme-secondary, #2bd4c4)" }}
-          >
-            LYRICS WAYYY
-          </p>
+                {/* Heading */}
+                <div className="mt-7 text-center">
+                  <p
+                    className="text-xs font-bold uppercase tracking-[0.35em]"
+                    style={{ color: "var(--theme-secondary, #2bd4c4)" }}
+                  >
+                    LYRICS WAYYY
+                  </p>
 
-          <h2
-            id="guest-login-title"
-            className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl"
-          >
-            Your music awaits
-          </h2>
+                  <h2
+                    id="guest-login-title"
+                    className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl"
+                  >
+                    Your music awaits
+                  </h2>
 
-          <p
-            className="mx-auto mt-3 max-w-sm text-sm leading-6 sm:text-base"
-            style={{ color: "var(--theme-textMuted, #a0a7b5)" }}
-          >
-            Sign in to unlock your music experience, play your favorite songs,
-            and create your own playlists.
-          </p>
-        </div>
+                  <p
+                    className="mx-auto mt-3 max-w-sm text-sm leading-6 sm:text-base"
+                    style={{ color: "var(--theme-textMuted, #a0a7b5)" }}
+                  >
+                    Sign in to unlock your music experience, play your favorite
+                    songs, and create your own playlists.
+                  </p>
+                </div>
 
-        {/* Neumorphic Sign In button */}
-        <div className="mt-8 space-y-4">
-          <button
-            type="button"
-            onClick={() => window.location.assign("/signin")}
-            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 font-bold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
-            style={{
-              background: "var(--theme-background, #252933)",
-              color: "var(--theme-primary, #8c7cf7)",
-              boxShadow: `
-                7px 7px 15px var(--theme-shadowDark, #151820),
-                -6px -6px 15px var(--theme-shadowLight, #343a48)
-              `,
-            }}
-          >
-            <LogIn size={19} />
-            Sign In
-          </button>
+                {/* Neumorphic Sign In button */}
+                <div className="mt-8 space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginPromptOpen(false);
+                      window.location.assign("/signin");
+                    }}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 font-bold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                    style={{
+                      background: "var(--theme-background, #252933)",
+                      color: "var(--theme-primary, #8c7cf7)",
+                      boxShadow: `
+      7px 7px 15px var(--theme-shadowDark, #151820),
+      -6px -6px 15px var(--theme-shadowLight, #343a48)
+    `,
+                    }}
+                  >
+                    <LogIn size={19} />
+                    Sign In
+                  </button>
 
-          {/* Neumorphic Create Account button */}
-          <button
-            type="button"
-            onClick={() => window.location.assign("/signup")}
-            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 py-3 font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
-            style={{
-              background: "var(--theme-background, #252933)",
-              color: "var(--theme-secondary, #2bd4c4)",
-              borderColor: "var(--theme-border, rgba(255,255,255,0.05))",
-              boxShadow: `
-                7px 7px 15px var(--theme-shadowDark, #151820),
-                -6px -6px 15px var(--theme-shadowLight, #343a48)
-              `,
-            }}
-          >
-            <UserPlus size={19} />
-            Create Account
-          </button>
-        </div>
+                  {/* Neumorphic Create Account button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginPromptOpen(false);
+                      window.location.assign("/signup");
+                    }}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 py-3 font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                    style={{
+                      background: "var(--theme-background, #252933)",
+                      color: "var(--theme-secondary, #2bd4c4)",
+                      borderColor:
+                        "var(--theme-border, rgba(255,255,255,0.05))",
+                      boxShadow: `
+      7px 7px 15px var(--theme-shadowDark, #151820),
+      -6px -6px 15px var(--theme-shadowLight, #343a48)
+    `,
+                    }}
+                  >
+                    <UserPlus size={19} />
+                    Create Account
+                  </button>
+                </div>
 
-        {/* Inset divider */}
-        <div
-          className="my-6 h-px w-full"
-          style={{
-            background: "var(--theme-border, rgba(255,255,255,0.08))",
-          }}
-        />
+                {/* Inset divider */}
+                <div
+                  className="my-6 h-px w-full"
+                  style={{
+                    background: "var(--theme-border, rgba(255,255,255,0.08))",
+                  }}
+                />
 
-        {/* Inset Maybe Later button */}
-        <button
-          type="button"
-          onClick={() => setLoginPromptOpen(false)}
-          className="flex min-h-12 w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
-          style={{
-            background: "var(--theme-background, #252933)",
-            color: "var(--theme-textMuted, #a0a7b5)",
-            boxShadow: `
+                {/* Inset Maybe Later button */}
+                <button
+                  type="button"
+                  onClick={() => setLoginPromptOpen(false)}
+                  className="flex min-h-12 w-full items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-[0.98]"
+                  style={{
+                    background: "var(--theme-background, #252933)",
+                    color: "var(--theme-textMuted, #a0a7b5)",
+                    boxShadow: `
               inset 4px 4px 9px var(--theme-shadowDark, #151820),
               inset -4px -4px 9px var(--theme-shadowLight, #343a48)
             `,
-          }}
-        >
-          Maybe Later
-        </button>
+                  }}
+                >
+                  Maybe Later
+                </button>
 
-        <p
-          className="mt-5 text-center text-xs leading-5"
-          style={{ color: "var(--theme-textMuted, #a0a7b5)" }}
-        >
-          Made for music lovers. 🎵
-        </p>
-      </section>
-    </div>,
-    document.body
-  )}
-
-
-    </PlaybackProgressContext.Provider>
-  </PlayerContext.Provider>
-);
+                <p
+                  className="mt-5 text-center text-xs leading-5"
+                  style={{ color: "var(--theme-textMuted, #a0a7b5)" }}
+                >
+                  Made for music lovers. 🎵
+                </p>
+              </section>
+            </div>,
+            document.body,
+          )}
+      </PlaybackProgressContext.Provider>
+    </PlayerContext.Provider>
+  );
 };
 
 export const usePlayer = () => {
