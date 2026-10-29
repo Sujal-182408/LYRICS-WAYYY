@@ -617,6 +617,9 @@ const SleepTimerMenu = ({ active, display, onStart, onCancel, onClose }) => {
    MUSIC PLAYER
 ========================================================= */
 
+
+
+
 export default function MusicPlayer() {
   const {
     currentSong,
@@ -647,7 +650,15 @@ export default function MusicPlayer() {
   } = usePlayer();
 
   // Playback time lives in a separate context to keep frequent progress updates lightweight.
-  const { currentTime, duration } = usePlaybackProgress();
+  const playbackProgress = usePlaybackProgress();
+  // Audio metadata may temporarily be NaN/Infinity while a track loads. Never
+  // pass those values to controlled inputs or progress calculations.
+  const currentTime = Number.isFinite(Number(playbackProgress?.currentTime))
+    ? Math.max(0, Number(playbackProgress.currentTime))
+    : 0;
+  const duration = Number.isFinite(Number(playbackProgress?.duration))
+    ? Math.max(0, Number(playbackProgress.duration))
+    : 0;
   const [suggestedSong, setSuggestedSong] = useState(null);
   const displaySong = currentSong || suggestedSong;
 
@@ -693,7 +704,9 @@ export default function MusicPlayer() {
   }, [currentSong?._id, suggestedSong?._id]);
 
   const handlePlayerToggle = () => {
-    if (!currentSong?._id && suggestedSong?._id) {
+    // The recommendation is only a visual placeholder until the user presses
+    // Play. Once playback is active, the same button must pause/resume it.
+    if (!currentSong?._id && suggestedSong?._id && !playing) {
       void playSong(suggestedSong, 0, [suggestedSong]);
       return;
     }
@@ -732,9 +745,11 @@ export default function MusicPlayer() {
   useEffect(() => {
     if (currentSong?._id) {
       setIsOpen(true);
+      // Keep the player minimized on track changes. Artwork is shown for every
+      // track; no YouTube video/iframe is rendered in this player.
       setIsMinimized(true);
     }
-  }, [currentSong?._id]);
+  }, [currentSong?._id, currentSong?.youtubeVideoId]);
 
   /* =======================================================
      FAVORITE SYNC
@@ -744,7 +759,7 @@ export default function MusicPlayer() {
     let cancelled = false;
 
     const loadFavoriteState = async () => {
-      if (!currentSong?._id) {
+      if (!currentSong?._id || currentSong?.youtubeVideoId) {
         setLiked(false);
         return;
       }
@@ -786,7 +801,7 @@ export default function MusicPlayer() {
 
   const handleToggleFavorite = async () => {
     const songId = displaySong?._id;
-    if (!songId || favoriteLoading) return;
+    if (!songId || displaySong?.youtubeVideoId || favoriteLoading) return;
 
     const nextLiked = !liked;
     setLiked(nextLiked);
@@ -888,7 +903,10 @@ export default function MusicPlayer() {
 
   const albumName = displaySong?.album?.title || displaySong?.album || "Single";
 
-  const timelineTime = seekingTime ?? currentTime;
+  const timelineTimeRaw = seekingTime ?? currentTime;
+  const timelineTime = Number.isFinite(Number(timelineTimeRaw))
+    ? Math.max(0, Number(timelineTimeRaw))
+    : 0;
   const timelineProgress =
     duration > 0
       ? Math.min(100, Math.max(0, (timelineTime / duration) * 100))
@@ -944,6 +962,7 @@ export default function MusicPlayer() {
             />
 
             <div className="relative flex items-center gap-3">
+              {/* Compact controls stay available for local and YouTube tracks. */}
               <AlbumArtwork song={displaySong} playing={playing} size="small" />
 
               <div className="min-w-0 flex-1">
@@ -1132,7 +1151,7 @@ export default function MusicPlayer() {
                 <button
                   type="button"
                   onClick={() => setIsMinimized(true)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center"
+                  className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
                     color: "var(--theme-textMuted)",
                   }}
@@ -1159,12 +1178,8 @@ export default function MusicPlayer() {
                     LEFT — ARTWORK / SONG
                 ============================================ */}
 
-                <div className="flex min-w-0 flex-col items-center justify-center">
-                  <AlbumArtwork
-                    song={displaySong}
-                    playing={playing}
-                    size="large"
-                  />
+                <div className="flex min-w-0 flex-col items-center justify-center gap-4">
+                  <AlbumArtwork song={displaySong} playing={playing} size="large" />
 
                   <div className="text-center mt-5 max-w-[300px]">
                     <h2
@@ -1202,9 +1217,11 @@ export default function MusicPlayer() {
                       size="small"
                       onClick={handleToggleFavorite}
                       active={liked}
-                      disabled={favoriteLoading}
+                      disabled={favoriteLoading || Boolean(displaySong?.youtubeVideoId)}
                       title={
-                        favoriteLoading
+                        displaySong?.youtubeVideoId
+                          ? "Favorites are available for library songs"
+                          : favoriteLoading
                           ? "Updating favorite..."
                           : liked
                             ? "Remove from favorites"
@@ -1239,7 +1256,9 @@ export default function MusicPlayer() {
                       <Moon size={16} />
                     </ControlButton>
 
-                    <AddToPlaylistButton song={displaySong} size="sm" />
+                    {!displaySong?.youtubeVideoId && (
+                      <AddToPlaylistButton song={displaySong} size="sm" />
+                    )}
                   </div>
 
                   {shareMessage && (
@@ -1446,9 +1465,10 @@ export default function MusicPlayer() {
                         <input
                           type="range"
                           min="0"
-                          max={duration || 0}
+                          max={duration > 0 ? duration : 1}
                           step="0.1"
-                          value={timelineTime || 0}
+                          value={Math.min(duration > 0 ? duration : 1, timelineTime)}
+                          disabled={duration <= 0}
                           onChange={(e) => {
                             const nextTime = Number(e.target.value);
                             seekingTimeRef.current = nextTime;
@@ -2055,12 +2075,6 @@ export default function MusicPlayer() {
     }}
   />
 </button>
-
-
-
-
-
-
                         <button
                           type="button"
                           onClick={handleShare}

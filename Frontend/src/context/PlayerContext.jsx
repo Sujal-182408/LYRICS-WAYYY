@@ -29,7 +29,14 @@ const PROGRESS_SAVE_INTERVAL = 10;
 const MAX_TICK_INTERVAL = 3;
 const POSITION_TOLERANCE = 0.5;
 
+const getTrackId = (song) => {
+  const id = song?._id ?? song?.id;
+  return id == null ? null : String(id);
+};
+
 const getPlayerStorageKeys = (userId) => {
+
+
   if (!userId) return null;
 
   const safeUserId = String(userId);
@@ -176,6 +183,9 @@ const getSongAudioSource = (song) =>
   // =====================================================
 
   const audioRef = useRef(null);
+  // YouTube playback is controlled by the visible IFrame Player API surface
+  // rendered by MusicPlayer. Uploaded/local tracks continue using audioRef.
+  const youtubePlayerRef = useRef(null);
 
   if (!audioRef.current) {
     audioRef.current = new Audio();
@@ -490,6 +500,7 @@ useEffect(() => {
     sessionGenerationRef.current += 1;
 
     const audio = audioRef.current;
+    try { youtubePlayerRef.current?.stopVideo?.(); } catch { /* Ignore during teardown. */ }
 
     if (audio) {
       audio.pause();
@@ -1229,6 +1240,31 @@ return () => {
   repeat,
 ]);
 
+  // Audio-only mode: a YouTube ID is metadata, not an audio source. Treat a track
+  // as externally hosted only when it has no real audio file/URL. No iframe is mounted.
+  const isYouTubeTrack = (song) =>
+    Boolean((song?.youtubeVideoId || song?.videoId) && !getSongAudioSource(song));
+
+  const registerYouTubePlayer = useCallback((player) => {
+    youtubePlayerRef.current = player || null;
+    if (player) {
+      try {
+        player.setVolume?.(mutedRef.current ? 0 : Math.round(volumeRef.current * 100));
+      } catch { /* Player may not be ready yet. */ }
+    }
+  }, []);
+
+  const updateYouTubeProgress = useCallback((time, totalDuration, isPlaying) => {
+    const safeTime = Number(time);
+    const safeDuration = Number(totalDuration);
+    if (Number.isFinite(safeTime) && safeTime >= 0) setCurrentTime(safeTime);
+    if (Number.isFinite(safeDuration) && safeDuration > 0) {
+      durationRef.current = safeDuration;
+      setDuration(safeDuration);
+    }
+    if (typeof isPlaying === "boolean") setPlaying(isPlaying);
+  }, []);
+
   // =====================================================
   // PLAY SONG
   // =====================================================
@@ -1361,8 +1397,21 @@ return () => {
       setDuration(0);
       resetPlaybackTrackers();
 
-      // Resolve the audio source.
+      // Audio-only mode: never mount or control a YouTube video player.
+      // A track carrying a YouTube ID can still play if it also has a real audioFile/audioUrl.
       const audioSource = getSongAudioSource(song);
+      if (!audioSource && (song.youtubeVideoId || song.videoId)) {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+        setPlaying(false);
+        console.warn(
+          `Audio-only playback unavailable for "${song.title || "this track"}": this record has a YouTube ID but no audioFile/audioUrl. Add a licensed audio file/URL to play it without video.`,
+        );
+        return;
+      }
+
+      // Resolve the audio source for uploaded/local tracks.
       const url = getAudioUrl(audioSource);
 
       if (!url) {
@@ -1445,6 +1494,29 @@ return () => {
     [playSongInternal],
   );
 
+  const playYouTubeSong = useCallback((video, videos = [], index = 0) => {
+    const videoId = video?.videoId || video?.youtubeVideoId;
+    if (!videoId) return;
+    const normalize = (item) => ({
+      _id: `youtube:${item.videoId || item.youtubeVideoId}`,
+      id: `youtube:${item.videoId || item.youtubeVideoId}`,
+      youtubeVideoId: item.videoId || item.youtubeVideoId,
+      isYouTubeTrack: true,
+      title: item.title || "YouTube track",
+      artist: item.artist || "YouTube Music",
+      coverImage: item.thumbnail || item.coverImage || "",
+      album: "YouTube Music",
+      source: "youtube",
+    });
+    const normalizedPlaylist = (Array.isArray(videos) && videos.length ? videos : [video])
+      .filter((item) => item?.videoId || item?.youtubeVideoId)
+      .map(normalize);
+    const selectedId = `youtube:${videoId}`;
+    const safeIndex = Math.max(0, normalizedPlaylist.findIndex((item) => item._id === selectedId));
+    const selected = normalizedPlaylist.find((item) => item._id === selectedId) || normalize(video);
+    void playSongInternal(selected, safeIndex >= 0 ? safeIndex : index, normalizedPlaylist, "playlist");
+  }, [playSongInternal]);
+
   // =====================================================
   // PLAY / PAUSE
   // =====================================================
@@ -1459,7 +1531,7 @@ const togglePlay = useCallback(async () => {
     return;
   }
 
-  if (!audio || !song || !userId) return;
+  if (!song || !userId) return;
 
   if (
     !userStateReadyRef.current ||
@@ -1468,6 +1540,18 @@ const togglePlay = useCallback(async () => {
   ) {
     return;
   }
+
+  if (isYouTubeTrack(song)) {
+    // This is a YouTube-only record, not a playable audio source. Do not fake
+    // a playing state; video playback is intentionally disabled in audio-only mode.
+    setPlaying(false);
+    console.warn(
+      `Cannot play "${song.title || "this track"}" in audio-only mode because it has no audioFile/audioUrl.`,
+    );
+    return;
+  }
+
+  if (!audio) return;
 
   try {
     // Pause the current track.
@@ -1587,22 +1671,34 @@ const togglePlay = useCallback(async () => {
     if (song._id) {
       void createListeningSession(song);
     }
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      return;
-    }
-
-    console.error("Toggle play error:", {
-      name: error?.name,
-      message: error?.message,
-      audioSrc: audio?.currentSrc || audio?.src,
-      readyState: audio?.readyState,
-      networkState: audio?.networkState,
-      mediaErrorCode: audio?.error?.code ?? null,
-    });
-
-    setPlaying(false);
+  }  catch (error) {
+  if (error?.name === "AbortError") {
+    return;
   }
+
+  const mediaErrorCodes = {
+    1: "MEDIA_ERR_ABORTED — Loading was aborted.",
+    2: "MEDIA_ERR_NETWORK — A network error occurred.",
+    3: "MEDIA_ERR_DECODE — The audio could not be decoded.",
+    4: "MEDIA_ERR_SRC_NOT_SUPPORTED — The source is unsupported.",
+  };
+
+  console.error("Toggle play failed:", error);
+
+  console.table({
+    errorName: error?.name ?? "Unknown",
+    errorMessage: error?.message ?? String(error),
+    audioSrc: audio?.currentSrc || audio?.src || "No source",
+    readyState: audio?.readyState,
+    networkState: audio?.networkState,
+    mediaErrorCode: audio?.error?.code ?? "None",
+    mediaError: mediaErrorCodes[audio?.error?.code] ?? "No media error",
+    userId,
+    songId: song?._id ?? song?.id ?? "Unknown",
+  });
+
+  setPlaying(false);
+}
 }, [
   userId,
   isAuthenticated,
@@ -1610,6 +1706,7 @@ const togglePlay = useCallback(async () => {
   saveListeningProgress,
   createListeningSession,
   getAudioUrl,
+  playing,
 ]);
 
 
@@ -1640,7 +1737,7 @@ const togglePlay = useCallback(async () => {
       ? list.filter(
           (song) =>
             getTrackId(song) &&
-            getSongAudioSource(song),
+            Boolean(getSongAudioSource(song)),
         )
       : [];
 
@@ -1812,7 +1909,7 @@ const togglePlay = useCallback(async () => {
       ? list.filter(
           (song) =>
             getTrackId(song) &&
-            getSongAudioSource(song),
+            Boolean(getSongAudioSource(song)),
         )
       : [];
 
@@ -1904,10 +2001,17 @@ const togglePlay = useCallback(async () => {
 
 const seekSong = useCallback((time) => {
   const audio = audioRef.current;
+  const activeSong = currentSongRef.current;
+  const nextTime = Number(time);
+
+  if (!Number.isFinite(nextTime)) return;
+  if (isYouTubeTrack(activeSong)) {
+    // No embedded video player in audio-only mode.
+    return;
+  }
 
   if (!audio) return;
 
-  const nextTime = Number(time);
   if (!Number.isFinite(nextTime)) return;
 
   const maxTime =
@@ -1952,6 +2056,7 @@ const changeVolume = useCallback((value) => {
   if (audioRef.current) {
     audioRef.current.volume = shouldMute ? 0 : safeVolume;
   }
+  // Audio-only mode: volume is controlled by the HTMLAudioElement.
 }, []);
 
 const toggleMute = useCallback(() => {
@@ -1965,6 +2070,7 @@ const toggleMute = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.volume = restoredVolume;
     }
+    // Audio-only mode: volume is controlled by the HTMLAudioElement.
 
     setVolume(restoredVolume);
     setMuted(false);
@@ -1974,6 +2080,7 @@ const toggleMute = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.volume = 0;
     }
+    // Audio-only mode: mute the HTMLAudioElement.
 
     setMuted(true);
   }
@@ -2030,6 +2137,24 @@ const cancelSleepTimer = useCallback(() => {
   setSleepTimer(null);
 }, [clearSleepTimerInterval]);
 
+  const handleYouTubeEnded = useCallback(async () => {
+    if (sleepTimerModeRef.current === "end") {
+      cancelSleepTimer();
+      setPlaying(false);
+      return;
+    }
+    if (repeatRef.current === "one" || repeatRef.current === "song" || repeatRef.current === 1) {
+      try {
+        youtubePlayerRef.current?.seekTo?.(0, true);
+        youtubePlayerRef.current?.playVideo?.();
+        setPlaying(true);
+      } catch (error) { console.warn("Could not repeat YouTube track:", error); }
+      return;
+    }
+    await nextSong();
+  }, [cancelSleepTimer, nextSong]);
+
+
 useEffect(() => {
   clearSleepTimerInterval();
 
@@ -2057,6 +2182,7 @@ useEffect(() => {
       accumulateListeningTime(true);
 
       audioRef.current?.pause();
+      try { youtubePlayerRef.current?.pauseVideo?.(); } catch { /* YouTube player may be unmounted. */ }
       setPlaying(false);
 
       // Save the final progress for the current listening session.
@@ -2477,6 +2603,10 @@ useEffect(() => {
       duration,
 
       playSong,
+      playYouTubeSong,
+      registerYouTubePlayer,
+      updateYouTubeProgress,
+      handleYouTubeEnded,
       togglePlay,
       nextSong,
       previousSong,
@@ -2515,6 +2645,10 @@ useEffect(() => {
       playing,
       duration,
       playSong,
+      playYouTubeSong,
+      registerYouTubePlayer,
+      updateYouTubeProgress,
+      handleYouTubeEnded,
       togglePlay,
       nextSong,
       previousSong,

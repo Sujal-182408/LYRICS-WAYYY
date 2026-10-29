@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import AddToPlaylistButton from "../assets/utility/AddToPlaylistButton";
 import { motion } from "framer-motion";
@@ -18,12 +19,10 @@ import {
   Waves,
   BadgeCheck,
   RefreshCw,
-  MoreVertical,
-  ListPlus,
-  ListMusic,
 } from "lucide-react";
 
 import { getSongs } from "../services/songService";
+import { searchYouTubeMusic } from "../services/youtubeMusicService";
 
 import {
   addFavorite,
@@ -32,8 +31,8 @@ import {
 } from "../services/profileService";
 
 import { BASE_URL } from "../config/api";
-import { usePlayer, usePlaybackProgress } from "../context/PlayerContext";
-import { useTheme } from "../context/ThemeContext";
+import { usePlayer } from "../context/PlayerContext";
+import "./Collection.css";
 
 /*
 ============================================================
@@ -50,18 +49,20 @@ LYRICS WAYYY — NEUMORPHIC MUSIC DECK
 ============================================================
 */
 
-const raised = "bg-[var(--theme-surface)] border border-[var(--theme-border)] shadow-[7px_7px_15px_var(--theme-shadowDark),_-6px_-6px_13px_var(--theme-shadowLight)]";
-const pressed = "bg-[var(--theme-surface)] border border-[var(--theme-border)] shadow-[inset_6px_6px_12px_var(--theme-shadowDark),inset_-5px_-5px_10px_var(--theme-shadowLight)]";
-const smallRaised = "bg-[var(--theme-surface)] border border-[var(--theme-border)] shadow-[4px_4px_9px_var(--theme-shadowDark),_-4px_-4px_9px_var(--theme-shadowLight)]";
-const raisedStyle = { background: "var(--theme-surface)", borderColor: "var(--theme-border)", boxShadow: "7px 7px 15px var(--theme-shadowDark), -6px -6px 13px var(--theme-shadowLight)" };
-const pressedStyle = { background: "var(--theme-surface)", borderColor: "var(--theme-border)", boxShadow: "inset 6px 6px 12px var(--theme-shadowDark), inset -5px -5px 10px var(--theme-shadowLight)" };
-const smallRaisedStyle = { background: "var(--theme-surface)", borderColor: "var(--theme-border)", boxShadow: "4px 4px 9px var(--theme-shadowDark), -4px -4px 9px var(--theme-shadowLight)" };
+const raised = "neu-raised";
+
+const pressed = "neu-inset";
+
+const smallRaised = "neu-raised-small";
 
 const Collection = () => {
   const {
     playSong,
+    playYouTubeSong,
     currentSong,
     playing,
+    currentTime,
+    duration,
     togglePlay,
     nextSong,
     previousSong,
@@ -74,29 +75,7 @@ const Collection = () => {
     repeat,
     setShuffle,
     setRepeat,
-    addToQueue,
-    playNext,
   } = usePlayer();
-
-  // Progress is deliberately separated from PlayerContext to avoid stale/undefined time values.
-  const { currentTime = 0, duration: progressDuration = 0 } = usePlaybackProgress();
-  const duration = Number.isFinite(progressDuration) ? progressDuration : 0;
-
-  // Follow the app-wide ThemeSwitcher instead of fixed colors.
-  const { theme: activeTheme } = useTheme();
-  const colors = activeTheme?.colors || {};
-  const themeVars = {
-    "--theme-background": colors.background || "#15181d",
-    "--theme-surface": colors.surface || "#15181d",
-    "--theme-surfaceLight": colors.surfaceLight || "#252b35",
-    "--theme-shadowDark": colors.shadowDark || "#0b0e13",
-    "--theme-shadowLight": colors.shadowLight || "#343b48",
-    "--theme-primary": colors.primary || "#8c7cf7",
-    "--theme-secondary": colors.secondary || "#2bd4c4",
-    "--theme-text": colors.text || "#eef0f6",
-    "--theme-textMuted": colors.textMuted || "#858c9d",
-    "--theme-border": colors.border || "#252b35",
-  };
 
   // =========================================================
   // PLAYER TIME
@@ -119,7 +98,10 @@ const Collection = () => {
   // STATE
   // =========================================================
 
+  // Uploaded tracks and YouTube results share the same Collection grid.
   const [songs, setSongs] = useState([]);
+  const [youtubeSongs, setYoutubeSongs] = useState([]);
+  const [youtubeLoading, setYoutubeLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("All");
 
@@ -128,7 +110,6 @@ const Collection = () => {
 
   const [hoveredSong, setHoveredSong] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [openSongMenu, setOpenSongMenu] = useState(null);
 
   /*
   ==========================================================
@@ -346,6 +327,61 @@ const Collection = () => {
     fetchFavorites();
   }, []);
 
+  // Keep YouTube discovery inside the existing Collection list (no separate section).
+  // The same search field searches local tracks and refreshes YouTube results.
+  useEffect(() => {
+    let cancelled = false;
+    const query = search.trim() || "popular Hindi songs official music video";
+    const timer = window.setTimeout(async () => {
+      setYoutubeLoading(true);
+      try {
+        const results = await searchYouTubeMusic(query, 12);
+        if (cancelled) return;
+        const normalized = (Array.isArray(results) ? results : [])
+          .filter((video) => video?.videoId || video?.youtubeVideoId)
+          .map((video) => {
+            const videoId = String(video.videoId || video.youtubeVideoId);
+            return {
+              _id: `youtube:${videoId}`,
+              id: `youtube:${videoId}`,
+              youtubeVideoId: videoId,
+              isYouTubeTrack: true,
+              source: "youtube",
+              title: video.title || "YouTube track",
+              artist: video.artist || "YouTube Music",
+              coverImage: video.thumbnail || video.coverImage || "",
+              album: "YouTube Music",
+              genre: "YouTube Music",
+              duration: Number(video.duration) || 0,
+            };
+          });
+        setYoutubeSongs(normalized);
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("Collection YouTube search failed:", err?.message || err);
+          setYoutubeSongs([]);
+        }
+      } finally {
+        if (!cancelled) setYoutubeLoading(false);
+      }
+    }, search.trim() ? 450 : 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [search]);
+
+  const allSongs = useMemo(() => {
+    const localIds = new Set(songs.map((song) => String(song?._id ?? song?.id)));
+    return [
+      ...songs,
+      ...youtubeSongs.filter((song) => !localIds.has(String(song._id))),
+    ];
+  }, [songs, youtubeSongs]);
+
+  const isYouTubeTrack = (song) => Boolean(song?.youtubeVideoId || song?.source === "youtube");
+
   // =========================================================
   // STATISTICS
   // =========================================================
@@ -355,7 +391,7 @@ const Collection = () => {
     const genres = new Set();
     const albums = new Set();
 
-    songs.forEach((song) => {
+    allSongs.forEach((song) => {
       const artist = getArtistName(song.artist);
 
       if (
@@ -378,12 +414,12 @@ const Collection = () => {
     });
 
     return {
-      songs: songs.length,
+      songs: allSongs.length,
       artists: artists.size,
       genres: genres.size,
       albums: albums.size,
     };
-  }, [songs]);
+  }, [allSongs]);
 
   // =========================================================
   // GENRES
@@ -392,14 +428,14 @@ const Collection = () => {
   const genres = useMemo(() => {
     const values = [
       ...new Set(
-        songs
+        allSongs
           .map((song) => song.genre?.trim())
           .filter(Boolean)
       ),
     ];
 
     return ["All", ...values];
-  }, [songs]);
+  }, [allSongs]);
 
   // =========================================================
   // FILTERED SONGS
@@ -410,7 +446,7 @@ const Collection = () => {
       .toLowerCase()
       .trim();
 
-    return songs.filter((song) => {
+    return allSongs.filter((song) => {
       const title =
         song.title?.toLowerCase() || "";
 
@@ -442,7 +478,7 @@ const Collection = () => {
       );
     });
   }, [
-    songs,
+    allSongs,
     search,
     selectedGenre,
   ]);
@@ -458,6 +494,12 @@ const Collection = () => {
     event?.stopPropagation();
 
     if (!songId) {
+      return;
+    }
+
+    // External YouTube video IDs are not MongoDB Song IDs.
+    // Do not send them to the uploaded-song favorites endpoint.
+    if (String(songId).startsWith("youtube:")) {
       return;
     }
 
@@ -548,25 +590,27 @@ const Collection = () => {
   // PLAY SONG
   // =========================================================
 
-const handlePlaySong = (song, event) => {
-  event?.stopPropagation();
+  const handlePlaySong = (song, event) => {
+    event?.stopPropagation();
 
-  if (!song?._id) {
-    console.error("[Collection] Song is missing its ID.");
-    return;
-  }
+    const index = filteredSongs.findIndex(
+      (item) => String(item?._id ?? item?.id) === String(song?._id ?? song?.id),
+    );
+    if (index < 0) return;
 
-  const index = filteredSongs.findIndex(
-    (item) => String(item?._id) === String(song._id)
-  );
+    if (isYouTubeTrack(song)) {
+      const youtubePlaylist = filteredSongs.filter(isYouTubeTrack);
+      const youtubeIndex = youtubePlaylist.findIndex(
+        (item) => String(item.youtubeVideoId) === String(song.youtubeVideoId),
+      );
+      playYouTubeSong(song, youtubePlaylist, Math.max(0, youtubeIndex));
+      return;
+    }
 
-  if (index === -1) {
-    console.error("[Collection] Song not found in filtered songs.");
-    return;
-  }
-
-  playSong(song, index, filteredSongs, "library");
-};
+    // Keep uploaded MP3 playback unchanged; pass the combined list so next/previous
+    // can move between uploaded tracks and YouTube tracks where supported.
+    playSong(song, index, filteredSongs);
+  };
 
   // =========================================================
   // ANIMATIONS
@@ -623,7 +667,7 @@ const handlePlaySong = (song, event) => {
 
   if (loading) {
     return (
-      <section style={themeVars} className="min-h-screen bg-[var(--theme-background)] text-[var(--theme-text)] flex items-center justify-center">
+      <section className="collection-page min-h-screen flex items-center justify-center">
         <div className="text-center">
           <motion.div
             animate={{
@@ -634,11 +678,9 @@ const handlePlaySong = (song, event) => {
               repeat: Infinity,
               ease: "linear",
             }}
-            style={pressedStyle}
             className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center ${pressed}`}
           >
             <div
-              style={smallRaisedStyle}
               className={`w-14 h-14 rounded-full flex items-center justify-center ${smallRaised}`}
             >
               <Music2
@@ -660,12 +702,12 @@ const handlePlaySong = (song, event) => {
               duration: 1.4,
               repeat: Infinity,
             }}
-            className="mt-7 text-[10px] tracking-[0.42em] uppercase text-[var(--theme-textMuted)]"
+            className="mt-7 text-[10px] tracking-[0.42em] uppercase text-[var(--theme-text-muted)]"
           >
             LYRICS WAYYY
           </motion.p>
 
-          <p className="mt-2 text-sm text-[var(--theme-textMuted)]/50">
+          <p className="mt-2 text-sm text-[var(--theme-text-muted)]/50">
             Preparing your music deck...
           </p>
         </div>
@@ -679,20 +721,11 @@ const handlePlaySong = (song, event) => {
 
   return (
     <motion.main
-      style={themeVars}
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="collection-theme min-h-screen bg-[var(--theme-background)] text-[var(--theme-text)] overflow-hidden pb-28"
+      className="collection-page min-h-screen overflow-hidden pb-28"
     >
-
-      <style>{`
-        .collection-theme [class*="shadow-["] { }
-        .collection-theme input[type="range"] { accent-color: var(--theme-secondary); }
-        .collection-theme button:focus-visible, .collection-theme input:focus-visible { outline: 2px solid var(--theme-secondary); outline-offset: 3px; }
-        @media (prefers-reduced-motion: reduce) { .collection-theme *, .collection-theme *::before, .collection-theme *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
-      `}</style>
-
       {/* ======================================================
           HEADER
       ====================================================== */}
@@ -704,7 +737,6 @@ const handlePlaySong = (song, event) => {
             className="flex items-center gap-2.5 sm:gap-4"
           >
             <div
-              style={raisedStyle}
               className={`w-12 h-12 rounded-2xl flex items-center justify-center ${raised}`}
             >
               <Waves
@@ -714,7 +746,7 @@ const handlePlaySong = (song, event) => {
             </div>
 
             <div>
-              <p className="text-[9px] uppercase tracking-[0.35em] text-[var(--theme-textMuted)]">
+              <p className="text-[9px] uppercase tracking-[0.35em] text-[var(--theme-text-muted)]">
                 LYRICS WAYYY
               </p>
 
@@ -735,7 +767,7 @@ const handlePlaySong = (song, event) => {
                 ●
               </span>
 
-              <span className="ml-2 text-[var(--theme-textMuted)]">
+              <span className="ml-2 text-[var(--theme-text-muted)]">
                 Library online
               </span>
             </div>
@@ -763,7 +795,6 @@ const handlePlaySong = (song, event) => {
         <div className="w-full max-w-[1560px] mx-auto">
           <motion.div
             variants={scaleIn}
-            style={pressedStyle}
             className={`rounded-3xl sm:rounded-4xl p-3 sm:p-6 lg:p-7 ${pressed}`}
           >
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-4 sm:gap-5">
@@ -773,7 +804,6 @@ const handlePlaySong = (song, event) => {
               ================================================== */}
 
               <div
-                style={raisedStyle}
                 className={`rounded-3xl p-4 sm:p-7 ${raised}`}
               >
                 <div className="flex items-start justify-between gap-5">
@@ -795,7 +825,7 @@ const handlePlaySong = (song, event) => {
                       </span>
                     </h2>
 
-                    <p className="mt-5 max-w-xl text-sm leading-6 text-[var(--theme-textMuted)]">
+                    <p className="mt-5 max-w-xl text-sm leading-6 text-[var(--theme-text-muted)]">
                       Search, filter and control your complete music
                       collection from one recessed command deck.
                     </p>
@@ -831,7 +861,7 @@ const handlePlaySong = (song, event) => {
                         )
                       }
                       placeholder="Search your collection..."
-                      className="w-full h-12 bg-transparent outline-none pl-12 pr-12 text-sm text-[var(--theme-text)] placeholder:text-[var(--theme-textMuted)]/45"
+                      className="collection-search-input w-full h-12 bg-transparent outline-none pl-12 pr-12 text-sm text-[var(--theme-text)] placeholder:text-[var(--theme-text-muted)]/45"
                     />
 
                     {search && (
@@ -840,7 +870,7 @@ const handlePlaySong = (song, event) => {
                         onClick={() =>
                           setSearch("")
                         }
-                        className="absolute right-4 text-[var(--theme-textMuted)] hover:text-[var(--theme-secondary)]"
+                        className="absolute right-4 text-[var(--theme-text-muted)] hover:text-[var(--theme-secondary)]"
                       >
                         <X size={17} />
                       </button>
@@ -880,11 +910,9 @@ const handlePlaySong = (song, event) => {
                     ]) => (
                       <div
                         key={label}
-                        style={pressedStyle}
                         className={`rounded-2xl p-3 flex items-center gap-3 ${pressed}`}
                       >
                         <div
-                          style={smallRaisedStyle}
                           className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${smallRaised}`}
                         >
                           <Icon
@@ -898,7 +926,7 @@ const handlePlaySong = (song, event) => {
                             {value}
                           </div>
 
-                          <div className="mt-1 text-[8px] uppercase tracking-[0.18em] text-[var(--theme-textMuted)]">
+                          <div className="mt-1 text-[8px] uppercase tracking-[0.18em] text-[var(--theme-text-muted)]">
                             {label}
                           </div>
                         </div>
@@ -914,7 +942,6 @@ const handlePlaySong = (song, event) => {
 
               <motion.div
                 variants={scaleIn}
-                style={pressedStyle}
                 className={`
                   rounded-[1.5rem]
                   p-5
@@ -935,13 +962,13 @@ const handlePlaySong = (song, event) => {
                         rounded-full
                         ${
                           playing
-                            ? "bg-[var(--theme-secondary)] shadow-[0_0_10px_rgba(43,212,196,.8)]"
-                            : "bg-[#858c9d]"
+                            ? "bg-[var(--theme-primary)] shadow-[0_0_10px_var(--theme-glow-primary)]"
+                            : "bg-[var(--theme-text-muted)]"
                         }
                       `}
                     />
 
-                    <span className="text-[9px] uppercase tracking-[0.28em] text-[var(--theme-textMuted)]">
+                    <span className="text-[9px] uppercase tracking-[0.28em] text-[var(--theme-text-muted)]">
                       Control Surface
                     </span>
                   </div>
@@ -970,7 +997,7 @@ const handlePlaySong = (song, event) => {
                                 Infinity,
                               ease: "easeInOut",
                             }}
-                            className="w-[3px] rounded-full bg-[var(--theme-secondary)]"
+                            className="w-[3px] rounded-full bg-[var(--theme-primary)]"
                           />
                         )
                       )}
@@ -1005,7 +1032,7 @@ const handlePlaySong = (song, event) => {
                               : 0,
                           ease: "easeInOut",
                         }}
-                        className="relative w-32 h-32 sm:w-48 sm:h-48 rounded-[1.4rem] overflow-hidden bg-[var(--theme-surface)] border border-[var(--theme-border)] shadow-[7px_7px_15px_rgba(0,0,0,.72),-6px_-6px_13px_rgba(168,178,198,.045)]"
+                        className="relative w-32 h-32 sm:w-48 sm:h-48 rounded-[1.4rem] overflow-hidden bg-[var(--theme-surface)] border border-[var(--theme-border)] shadow-[7px_7px_15px_var(--theme-shadow-dark),-6px_-6px_13px_var(--theme-shadow-light)]"
                       >
                         <img
                           src={getCoverUrl(
@@ -1015,10 +1042,8 @@ const handlePlaySong = (song, event) => {
                             currentSong.title
                           }
                           onError={(e) => {
-                            if (!e.currentTarget.dataset.fallback) {
-                              e.currentTarget.dataset.fallback = "true";
-                              e.currentTarget.src = "/default-cover.png";
-                            }
+                            e.currentTarget.src =
+                              "/default-cover.png";
                           }}
                           className="w-full h-full object-cover"
                         />
@@ -1035,7 +1060,7 @@ const handlePlaySong = (song, event) => {
                       </h3>
 
                       <div className="mt-1.5 flex items-center justify-center gap-1.5">
-                        <span className="text-xs text-[var(--theme-textMuted)] truncate max-w-[200px]">
+                        <span className="text-xs text-[var(--theme-text-muted)] truncate max-w-[200px]">
                           {getArtistName(
                             currentSong.artist
                           )}
@@ -1056,10 +1081,10 @@ const handlePlaySong = (song, event) => {
 
                     <div className="mt-5">
                       <div className="relative h-4">
-                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[var(--theme-surface)] shadow-[inset_3px_3px_6px_rgba(0,0,0,.75),inset_-2px_-2px_5px_rgba(168,178,198,.04)]" />
+                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[var(--theme-surface)] shadow-[inset_3px_3px_6px_var(--theme-shadow-dark),inset_-2px_-2px_5px_var(--theme-shadow-light)]" />
 
                         <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[var(--theme-secondary)] shadow-[0_0_8px_rgba(43,212,196,.4)] pointer-events-none"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[var(--theme-primary)] shadow-[0_0_8px_var(--theme-glow-primary)] pointer-events-none"
                           style={{
                             width:
                               duration >
@@ -1093,11 +1118,11 @@ const handlePlaySong = (song, event) => {
                               )
                             )
                           }
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          className="collection-range-input absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
 
                         <div
-                          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--theme-secondary)] border-2 border-[#15181d] shadow-[0_0_8px_rgba(43,212,196,.6)] pointer-events-none"
+                          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[var(--theme-primary)] border-2 border-[var(--theme-surface)] shadow-[0_0_8px_var(--theme-glow-primary)] pointer-events-none"
                           style={{
                             left:
                               duration >
@@ -1113,7 +1138,7 @@ const handlePlaySong = (song, event) => {
                         />
                       </div>
 
-                      <div className="flex justify-between mt-1 text-[9px] font-mono text-[var(--theme-textMuted)]">
+                      <div className="flex justify-between mt-1 text-[9px] font-mono text-[var(--theme-text-muted)]">
                         <span>
                           {formatTime(
                             currentTime
@@ -1145,7 +1170,7 @@ const handlePlaySong = (song, event) => {
                           ${
                             shuffle
                               ? "text-[var(--theme-secondary)]"
-                              : "text-[var(--theme-textMuted)]"
+                              : "text-[var(--theme-text-muted)]"
                           }
                           ${
                             shuffle
@@ -1181,7 +1206,7 @@ const handlePlaySong = (song, event) => {
                             ? "Pause"
                             : "Play"
                         }
-                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center bg-[var(--theme-secondary)] text-[#15181d] shadow-[7px_7px_14px_rgba(0,0,0,.7),-5px_-5px_10px_rgba(168,178,198,.05)] hover:scale-105 active:scale-95 transition-transform"
+                        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center bg-[var(--theme-primary)] text-[var(--theme-background)] shadow-[7px_7px_14px_var(--theme-shadow-dark),-5px_-5px_10px_var(--theme-shadow-light)] hover:scale-105 active:scale-95 transition-transform"
                       >
                         {playing ? (
                           <div className="flex gap-1">
@@ -1223,7 +1248,7 @@ const handlePlaySong = (song, event) => {
                           ${
                             repeat
                               ? "text-[var(--theme-primary)]"
-                              : "text-[var(--theme-textMuted)]"
+                              : "text-[var(--theme-text-muted)]"
                           }
                           ${
                             repeat
@@ -1251,7 +1276,7 @@ const handlePlaySong = (song, event) => {
                             ? "Unmute"
                             : "Mute"
                         }
-                        className="shrink-0 text-[var(--theme-textMuted)] hover:text-[var(--theme-text)] transition"
+                        className="shrink-0 text-[var(--theme-text-muted)] hover:text-[var(--theme-text)] transition"
                       >
                         <Volume2
                           size={15}
@@ -1265,7 +1290,7 @@ const handlePlaySong = (song, event) => {
                       </button>
 
                       <div className="relative flex-1 min-w-0 h-3">
-                        <div className="absolute inset-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-[var(--theme-surface)] shadow-[inset_2px_2px_5px_rgba(0,0,0,.75),inset_-2px_-2px_4px_rgba(168,178,198,.04)]" />
+                        <div className="absolute inset-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-[var(--theme-surface)] shadow-[inset_2px_2px_5px_var(--theme-shadow-dark),inset_-2px_-2px_4px_var(--theme-shadow-light)]" />
 
                         <div
                           className="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-[var(--theme-primary)] pointer-events-none"
@@ -1294,11 +1319,11 @@ const handlePlaySong = (song, event) => {
                               )
                             )
                           }
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          className="collection-range-input absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                       </div>
 
-                      <span className="w-8 text-right text-[9px] font-mono text-[var(--theme-textMuted)]">
+                      <span className="w-8 text-right text-[9px] font-mono text-[var(--theme-text-muted)]">
                         {Math.round(
                           (muted
                             ? 0
@@ -1316,7 +1341,7 @@ const handlePlaySong = (song, event) => {
                     >
                       <Music2
                         size={32}
-                        className="text-[var(--theme-textMuted)]/50"
+                        className="text-[var(--theme-text-muted)]/50"
                       />
                     </div>
 
@@ -1324,7 +1349,7 @@ const handlePlaySong = (song, event) => {
                       Nothing playing
                     </h3>
 
-                    <p className="mt-2 max-w-[210px] text-xs leading-5 text-[var(--theme-textMuted)]">
+                    <p className="mt-2 max-w-[210px] text-xs leading-5 text-[var(--theme-text-muted)]">
                       Select a song from your collection
                       to start listening.
                     </p>
@@ -1389,7 +1414,7 @@ const handlePlaySong = (song, event) => {
                         active
                           ? "text-[var(--theme-secondary)] " +
                             pressed
-                          : "text-[var(--theme-textMuted)] " +
+                          : "text-[var(--theme-text-muted)] " +
                             smallRaised
                       }`}
                     >
@@ -1416,7 +1441,7 @@ const handlePlaySong = (song, event) => {
               className={`mt-3 rounded-2xl p-4 ${pressed}`}
             >
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--theme-textMuted)]">
+                <span className="text-[9px] uppercase tracking-[0.25em] text-[var(--theme-text-muted)]">
                   Active filter
                 </span>
 
@@ -1462,12 +1487,12 @@ const handlePlaySong = (song, event) => {
               </h2>
             </div>
 
-            <div className="text-[10px] text-[var(--theme-textMuted)]">
+            <div className="text-[10px] text-[var(--theme-text-muted)]">
               {filteredSongs.length} tracks
             </div>
           </motion.div>
 
-          {error ? (
+          {error && songs.length === 0 && youtubeSongs.length === 0 && !youtubeLoading ? (
             <motion.div
               variants={fadeUp}
               className={`rounded-2xl p-8 text-center ${pressed}`}
@@ -1477,7 +1502,7 @@ const handlePlaySong = (song, event) => {
               >
                 <Radio
                   size={20}
-                  className="text-[#ff6b6b]"
+                  className="text-[var(--theme-danger)]"
                 />
               </div>
 
@@ -1485,7 +1510,7 @@ const handlePlaySong = (song, event) => {
                 Collection unavailable
               </h3>
 
-              <p className="mt-2 text-sm text-[var(--theme-textMuted)]">
+              <p className="mt-2 text-sm text-[var(--theme-text-muted)]">
                 {error}
               </p>
 
@@ -1507,15 +1532,15 @@ const handlePlaySong = (song, event) => {
             >
               <Library
                 size={28}
-                className="mx-auto text-[var(--theme-textMuted)]"
+                className="mx-auto text-[var(--theme-text-muted)]"
               />
 
               <h3 className="mt-4 font-bold">
                 No music found
               </h3>
 
-              <p className="mt-2 text-sm text-[var(--theme-textMuted)]">
-                Try another search or genre.
+              <p className="mt-2 text-sm text-[var(--theme-text-muted)]">
+                {youtubeLoading ? "Searching YouTube and your uploaded library." : "Try another search or genre."}
               </p>
             </motion.div>
           ) : (
@@ -1525,10 +1550,8 @@ const handlePlaySong = (song, event) => {
             >
               {filteredSongs.map(
                 (song, index) => {
-                  const favorite =
-                    isFavorite(
-                      song._id
-                    );
+                  const youtubeTrack = isYouTubeTrack(song);
+                  const favorite = !youtubeTrack && isFavorite(song._id);
 
                   const favoriteBusy =
                     Boolean(
@@ -1575,7 +1598,7 @@ const handlePlaySong = (song, event) => {
                           song
                         )
                       }
-                      className={`group relative rounded-[1.2rem] sm:rounded-[1.4rem] p-2.5 sm:p-4 cursor-pointer transition-all duration-300 ${
+                      className={`song-card group relative rounded-[1.2rem] sm:rounded-[1.4rem] p-2.5 sm:p-4 cursor-pointer transition-all duration-300 ${
                         isHovered
                           ? pressed
                           : raised
@@ -1583,35 +1606,17 @@ const handlePlaySong = (song, event) => {
                     >
                       <div className="flex items-center gap-2.5 sm:gap-4">
 
-                        {/* INDEX / PLAY */}
+                        {/* INDEX */}
 
                         <div className="hidden sm:flex w-9 shrink-0 items-center justify-center">
-                          {isHovered ? (
-                            <button
-                              type="button"
-                              onClick={(e) =>
-                                handlePlaySong(
-                                  song,
-                                  e
-                                )
-                              }
-                              className="w-9 h-9 rounded-full bg-[var(--theme-secondary)] text-[#15181d] flex items-center justify-center shadow-[4px_4px_8px_rgba(0,0,0,.6)]"
-                            >
-                              <Play
-                                size={14}
-                                fill="currentColor"
-                              />
-                            </button>
-                          ) : (
-                            <span className="text-[10px] text-[var(--theme-textMuted)]/50 font-mono">
-                              {String(
-                                index + 1
-                              ).padStart(
-                                2,
-                                "0"
-                              )}
-                            </span>
-                          )}
+                          <span className="text-[10px] text-[var(--theme-text-muted)]/50 font-mono">
+                            {String(
+                              index + 1
+                            ).padStart(
+                              2,
+                              "0"
+                            )}
+                          </span>
                         </div>
 
                         {/* ART WELL */}
@@ -1638,7 +1643,7 @@ const handlePlaySong = (song, event) => {
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
 
-                          <div className="absolute inset-0 pointer-events-none shadow-[inset_3px_3px_7px_rgba(0,0,0,.5),inset_-2px_-2px_5px_rgba(255,255,255,.035)]" />
+                          <div className="absolute inset-0 pointer-events-none shadow-[inset_3px_3px_7px_var(--theme-shadow-dark),inset_-2px_-2px_5px_var(--theme-shadow-light)]" />
                         </div>
 
                         {/* SONG INFORMATION */}
@@ -1673,12 +1678,12 @@ const handlePlaySong = (song, event) => {
                               >
                                 <Mic2
                                   size={10}
-                                  className="text-[var(--theme-textMuted)]"
+                                  className="text-[var(--theme-text-muted)]"
                                 />
                               </div>
                             )}
 
-                            <span className="text-xs text-[var(--theme-textMuted)] truncate">
+                            <span className="text-xs text-[var(--theme-text-muted)] truncate">
                               {
                                 artistName
                               }
@@ -1686,9 +1691,14 @@ const handlePlaySong = (song, event) => {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                            {song.genre && (
+                            {youtubeTrack && (
+                              <span className={`px-2.5 py-1 rounded-md text-[8px] uppercase tracking-wider text-[var(--theme-secondary)] ${pressed}`}>
+                                YouTube
+                              </span>
+                            )}
+                            {song.genre && !youtubeTrack && (
                               <span
-                                className={`px-2.5 py-1 rounded-md text-[8px] uppercase tracking-wider text-[var(--theme-textMuted)] ${pressed}`}
+                                className={`px-2.5 py-1 rounded-md text-[8px] uppercase tracking-wider text-[var(--theme-text-muted)] ${pressed}`}
                               >
                                 {
                                   song.genre
@@ -1699,7 +1709,7 @@ const handlePlaySong = (song, event) => {
                             {song.album &&
                               typeof song.album ===
                                 "string" && (
-                                <span className="text-[9px] text-[var(--theme-textMuted)]/50 truncate">
+                                <span className="text-[9px] text-[var(--theme-text-muted)]/50 truncate">
                                   {
                                     song.album
                                   }
@@ -1718,146 +1728,52 @@ const handlePlaySong = (song, event) => {
 
                           <button
                             type="button"
-                            disabled={
-                              favoriteBusy
-                            }
+                            disabled={favoriteBusy || youtubeTrack}
                             onClick={(e) =>
-                              toggleFavorite(
-                                song._id,
-                                e
-                              )
+                              toggleFavorite(song._id, e)
                             }
-                            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                              favorite
-                                ? pressed
-                                : smallRaised
-                            } ${
-                              favoriteBusy
-                                ? "opacity-50 cursor-wait"
-                                : "hover:scale-105 active:scale-90"
-                            }`}
+                            className={`favorite-button w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                              favorite ? "is-favorite" : ""
+                            } ${favoriteBusy ? "is-loading" : ""}`}
                             title={
-                              favorite
-                                ? "Remove favorite"
-                                : "Add favorite"
+                              youtubeTrack
+                                ? "Favorites are available for uploaded songs"
+                                : favoriteBusy
+                                  ? "Updating favorite..."
+                                  : favorite
+                                    ? "Remove favorite"
+                                    : "Add favorite"
                             }
+                            aria-label={
+                              youtubeTrack
+                                ? "Favorites are available for uploaded songs"
+                                : favoriteBusy
+                                  ? "Updating favorite"
+                                  : favorite
+                                    ? "Remove favorite"
+                                    : "Add favorite"
+                            }
+                            aria-busy={favoriteBusy}
                           >
                             {favoriteBusy ? (
-                              <motion.div
-                                animate={{
-                                  rotate: 360,
-                                }}
-                                transition={{
-                                  duration: 0.8,
-                                  repeat:
-                                    Infinity,
-                                  ease: "linear",
-                                }}
-                              >
-                                <RefreshCw
-                                  size={14}
-                                  className="text-[var(--theme-secondary)]"
-                                />
-                              </motion.div>
+                              <RefreshCw
+                                size={16}
+                                className="favorite-spinner"
+                                aria-hidden="true"
+                              />
                             ) : (
                               <Heart
                                 size={15}
                                 className={
                                   favorite
-                                    ? "text-[var(--theme-primary)] fill-[#8c7cf7]"
-                                    : "text-[var(--theme-textMuted)]"
+                                    ? "favorite-heart-active"
+                                    : ""
                                 }
+                                fill={favorite ? "currentColor" : "none"}
+                                aria-hidden="true"
                               />
                             )}
                           </button>
-
-                          {/* THREE-DOT MORE OPTIONS MENU */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenSongMenu((previous) =>
-                                  previous === song._id ? null : song._id
-                                );
-                              }}
-                              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all text-[var(--theme-textMuted)] hover:text-[var(--theme-secondary)] active:scale-95 ${
-                                openSongMenu === song._id ? pressed : smallRaised
-                              }`}
-                              title="More options"
-                              aria-label={`More options for ${song.title || "song"}`}
-                              aria-expanded={openSongMenu === song._id}
-                            >
-                              <MoreVertical size={18} />
-                            </button>
-
-                            {openSongMenu === song._id && (
-                              <>
-                                <button
-                                  type="button"
-                                  aria-label="Close song options"
-                                  className="fixed inset-0 z-40 cursor-default"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenSongMenu(null);
-                                  }}
-                                />
-
-                                <div
-                                  className="absolute right-0 top-full mt-2 z-50 w-52 rounded-2xl p-2 bg-[var(--theme-surface)] border border-[var(--theme-border)] shadow-[8px_8px_18px_rgba(0,0,0,.75),-5px_-5px_12px_rgba(168,178,198,.045)]"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      handlePlaySong(song, e);
-                                      setOpenSongMenu(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs text-[#d9deea] transition-colors hover:bg-[#20252d] hover:text-[var(--theme-secondary)]"
-                                  >
-                                    <Play size={15} />
-                                    <span>Play Now</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      playNext(song);
-                                      setOpenSongMenu(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs text-[#d9deea] transition-colors hover:bg-[#20252d] hover:text-[var(--theme-secondary)]"
-                                  >
-                                    <ListMusic size={15} />
-                                    <span>Play Next</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addToQueue(song);
-                                      setOpenSongMenu(null);
-                                    }}
-                                    className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs text-[#d9deea] transition-colors hover:bg-[#20252d] hover:text-[var(--theme-secondary)]"
-                                  >
-                                    <ListPlus size={15} />
-                                    <span>Add to Queue</span>
-                                  </button>
-
-                                  <div className="my-1 border-t border-[var(--theme-border)]" />
-
-                                  <div className="flex items-center gap-3 rounded-xl px-3 py-2 text-xs text-[#d9deea] hover:bg-[#20252d]">
-                                    <ListMusic size={15} className="shrink-0 text-[var(--theme-secondary)]" />
-                                    <span className="min-w-0 flex-1">Add to Playlist</span>
-                                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                                      <AddToPlaylistButton song={song} size="sm" />
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
 
                           {/* PLAY */}
 
@@ -1871,7 +1787,7 @@ const handlePlaySong = (song, event) => {
                             }
                             className={`hidden sm:flex w-10 h-10 rounded-full items-center justify-center transition-all ${
                               isHovered
-                                ? "bg-[var(--theme-secondary)] text-[#15181d] shadow-[5px_5px_10px_rgba(0,0,0,.65)]"
+                                ? "bg-[var(--theme-primary)] text-[var(--theme-background)] shadow-[5px_5px_10px_var(--theme-shadow-dark)]"
                                 : smallRaised
                             }`}
                           >
@@ -1885,16 +1801,7 @@ const handlePlaySong = (song, event) => {
                             />
                           </button>
 
-                          {/* ARROW */}
 
-                          <ChevronRight
-                            size={16}
-                            className={`hidden md:block transition-transform duration-300 ${
-                              isHovered
-                                ? "text-[var(--theme-secondary)] translate-x-1"
-                                : "text-[var(--theme-textMuted)]/30"
-                            }`}
-                          />
                         </div>
                       </div>
 
@@ -1916,7 +1823,7 @@ const handlePlaySong = (song, event) => {
                             transition={{
                               duration: 0.5,
                             }}
-                            className="h-full rounded-full bg-[var(--theme-secondary)]/60"
+                            className="h-full rounded-full bg-[var(--theme-primary)]/60"
                           />
                         </div>
                       </div>
@@ -1954,15 +1861,15 @@ const handlePlaySong = (song, event) => {
                   Collection ready
                 </p>
 
-                <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--theme-textMuted)] mt-1">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--theme-text-muted)] mt-1">
                   {statistics.songs} songs ·{" "}
                   {statistics.artists} artists
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-[var(--theme-textMuted)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-secondary)] shadow-[0_0_8px_rgba(43,212,196,.7)]" />
+            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-[var(--theme-text-muted)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--theme-primary)] shadow-[0_0_8px_var(--theme-glow-primary)]" />
 
               Audio system active
             </div>

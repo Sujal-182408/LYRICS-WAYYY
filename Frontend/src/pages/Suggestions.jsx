@@ -32,6 +32,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { BASE_URL } from "../config/api";
 import { usePlayer } from "../context/PlayerContext";
+import YoutubeMusicDiscovery from "../assets/components/YoutubeMusicDiscovery";
 
 // ============================================================
 // CONFIGURATION
@@ -677,9 +678,13 @@ const Suggestions = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+
+
   // ----------------------------------------------------------
   // FETCH DATA
   // ----------------------------------------------------------
+
+  
 
   const fetchSuggestions = useCallback(
     async ({ background = false } = {}) => {
@@ -809,6 +814,8 @@ setRecentSongs(uniqueRecent);
     [],
   );
 
+
+
   useEffect(() => {
     fetchSuggestions();
   }, [fetchSuggestions]);
@@ -855,6 +862,8 @@ setRecentSongs(uniqueRecent);
 
     return (unseen.length ? unseen : songs).slice(0, MAX_ITEMS);
   }, [songs, recentSongs]);
+
+
 
   const popularArtists = useMemo(
     () =>
@@ -934,35 +943,39 @@ setRecentSongs(uniqueRecent);
   // PLAY SONG
   // ----------------------------------------------------------
 
- const playSelectedSong = (song, index, list = songs) => {
-  if (!song) return;
+const playSelectedSong = useCallback(
+  (song, index = 0, list = songs) => {
+    if (!song) return;
 
-  const songId = song._id || song.id;
+    const songId = song._id ?? song.id;
 
-  if (!songId) {
-    console.error("Cannot play song: missing song ID", song);
-    return;
-  }
+    if (songId == null) {
+      console.error("Cannot play song: missing song ID", song);
+      return;
+    }
 
-  if (typeof playSong !== "function") {
-    console.error("playSong is not available in PlayerContext");
-    return;
-  }
+    if (typeof playSong !== "function") {
+      console.error("playSong is not available in PlayerContext");
+      return;
+    }
 
-  const songList = Array.isArray(list) && list.length > 0
-    ? list
-    : [song];
+    const songList =
+      Array.isArray(list) && list.length > 0 ? list : [song];
 
-  const songIndex = songList.findIndex(
-    (item) => String(item._id || item.id) === String(songId)
-  );
+    const songIndex = songList.findIndex(
+      (item) =>
+        String(item?._id ?? item?.id) === String(songId),
+    );
 
-  playSong(
-    song,
-    songIndex >= 0 ? songIndex : 0,
-    songList
-  );
-};
+    playSong(
+      song,
+      songIndex >= 0 ? songIndex : Math.max(0, index),
+      songList,
+      "library",
+    );
+  },
+  [playSong, songs],
+);
 
   // ----------------------------------------------------------
   // OPEN ARTIST PROFILE
@@ -1106,17 +1119,20 @@ setRecentSongs(uniqueRecent);
     [playSelectedSong],
   );
 
-  // ----------------------------------------------------------
-  // SONG SECTION
-  // ----------------------------------------------------------
+// ============================================================
+// SONG SECTION
+// ============================================================
 
-  const renderSongSection = (
-    title,
-    subtitle,
-    Icon,
-    list,
-    sectionKey,
-  ) => (
+const renderSongSection = (
+  title,
+  subtitle,
+  Icon,
+  list,
+  sectionKey,
+) => {
+  const safeList = Array.isArray(list) ? list : [];
+
+  return (
     <section key={sectionKey} className="mb-10">
       <SectionHeading
         icon={Icon}
@@ -1124,15 +1140,15 @@ setRecentSongs(uniqueRecent);
         subtitle={subtitle}
       />
 
-      {list.length === 0 ? (
+      {safeList.length === 0 ? (
         <EmptyState message="No songs available yet." />
       ) : (
         <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-4 pt-1">
-          {list.map((song, index) => (
+          {safeList.map((song, index) => (
             <SongCard
               key={getUniqueKey(song, sectionKey, index)}
               song={song}
-              songs={list}
+              songs={safeList}
               index={index}
               onPlay={playSelectedSong}
               currentSong={currentSong}
@@ -1143,6 +1159,7 @@ setRecentSongs(uniqueRecent);
       )}
     </section>
   );
+};
 
   // ----------------------------------------------------------
   // PAGE
@@ -1239,6 +1256,7 @@ setRecentSongs(uniqueRecent);
                     className="pointer-events-none absolute -right-7 -top-8 h-24 w-24 rounded-full opacity-10 blur-2xl"
                     style={{ background: primaryColor }}
                   />
+                  
 
                   <div
                     className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-105 sm:h-14 sm:w-14"
@@ -1395,7 +1413,7 @@ setRecentSongs(uniqueRecent);
                     src={getSongImage(featuredSong)}
                     alt={featuredSong.title || "Featured track"}
                     fallback={Disc3}
-                  />
+                    />
                 </button>
 
                 <h2
@@ -1422,14 +1440,15 @@ setRecentSongs(uniqueRecent);
                     type="button"
                     onClick={() => {
                       const list = trendingSongs.length
-                        ? trendingSongs
-                        : songs;
-
+                      ? trendingSongs
+                      : songs;
+                      
                       const index = list.findIndex(
                         (song) =>
                           String(getId(song)) ===
                           String(getId(featuredSong)),
                       );
+                      
 
                       playSongList(list, Math.max(index, 0));
                     }}
@@ -1447,8 +1466,8 @@ setRecentSongs(uniqueRecent);
               </motion.div>
             ) : (
               <div
-                className="hidden min-h-48 items-center justify-center rounded-3xl lg:flex"
-                style={inset}
+              className="hidden min-h-48 items-center justify-center rounded-3xl lg:flex"
+              style={inset}
               >
                 <div className="text-center">
                   <Music size={42} style={{ color: primaryColor }} />
@@ -1599,14 +1618,17 @@ setRecentSongs(uniqueRecent);
               )}
             </section>
 
-            {/* 4. RECOMMENDED */}
-            {renderSongSection(
-              "Recommended For You",
-              "A few more tracks worth discovering",
-              Headphones,
-              recommendedSongs,
-              "recommended",
-            )}
+{/* 4. RECOMMENDED */}
+{renderSongSection(
+  "Recommended For You",
+  "A few more tracks worth discovering",
+  Headphones,
+  recommendedSongs,
+  "recommended",
+)}
+
+{/* YouTube Music Discovery */}
+<YoutubeMusicDiscovery />
 
             {/* 5. RECENTLY PLAYED */}
             <section className="mb-10">
