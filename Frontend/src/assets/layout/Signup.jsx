@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
 import {
   ArrowRight,
   Eye,
@@ -18,9 +17,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-
 import axios from "axios";
-
 import { BASE_URL } from "../../config/api";
 import { useAuth } from "../../AuthContext";
 
@@ -31,13 +28,18 @@ import { useAuth } from "../../AuthContext";
 const BASE = "#252933";
 const LIGHT = "#2a3543";
 const DARK = "#0f141a";
-
 const PURPLE = "#8c7cf7";
 const TEAL = "#2bd4c4";
 
 // =====================================================
-// NEUMORPHISM
+// NEUMORPHISM SHADOWS
 // =====================================================
+
+const OUTER_SHADOW =
+  "18px 18px 40px #0f141a, -18px -18px 40px #2a3543";
+
+const INNER_SHADOW =
+  "inset 6px 6px 12px #0f141a, inset -6px -6px 12px #2a3543";
 
 const neuShadow =
   "shadow-[8px_8px_16px_#0f141a,-8px_-8px_16px_#2a3543]";
@@ -68,20 +70,13 @@ const Signup = () => {
   // UI STATE
   // ===================================================
 
-  const [showPassword, setShowPassword] =
-    useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [success, setSuccess] =
-    useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // ===================================================
   // PASSWORD RULES
@@ -114,29 +109,12 @@ const Signup = () => {
 
     let score = 0;
 
-    if (password.length >= 8) {
-      score++;
-    }
-
-    if (password.length >= 10) {
-      score++;
-    }
-
-    if (/[A-Z]/.test(password)) {
-      score++;
-    }
-
-    if (/[a-z]/.test(password)) {
-      score++;
-    }
-
-    if (/[0-9]/.test(password)) {
-      score++;
-    }
-
-    if (/[^A-Za-z0-9]/.test(password)) {
-      score++;
-    }
+    if (password.length >= 8) score++;
+    if (password.length >= 10) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
 
     if (score <= 2) {
       return {
@@ -164,8 +142,7 @@ const Signup = () => {
 
   const passwordsMatch =
     formData.confirmPassword.length > 0 &&
-    formData.password ===
-      formData.confirmPassword;
+    formData.password === formData.confirmPassword;
 
   // ===================================================
   // INPUT CHANGE
@@ -179,13 +156,8 @@ const Signup = () => {
       [name]: value,
     }));
 
-    if (error) {
-      setError("");
-    }
-
-    if (success) {
-      setSuccess("");
-    }
+    if (error) setError("");
+    if (success) setSuccess("");
   };
 
   // ===================================================
@@ -193,24 +165,12 @@ const Signup = () => {
   // ===================================================
 
   const validateForm = () => {
-    const name =
-      formData.name.trim();
+    const name = formData.name.trim();
+    const email = formData.email.trim().toLowerCase();
+    const password = formData.password;
+    const confirmPassword = formData.confirmPassword;
 
-    const email =
-      formData.email
-        .trim()
-        .toLowerCase();
-
-    const password =
-      formData.password;
-
-    const confirmPassword =
-      formData.confirmPassword;
-
-    // -------------------------------------------------
     // NAME
-    // -------------------------------------------------
-
     if (!name) {
       return "Please enter your name.";
     }
@@ -223,10 +183,7 @@ const Signup = () => {
       return "Name cannot exceed 100 characters.";
     }
 
-    // -------------------------------------------------
     // EMAIL
-    // -------------------------------------------------
-
     if (!email) {
       return "Please enter your email address.";
     }
@@ -235,17 +192,13 @@ const Signup = () => {
       return "Email address is too long.";
     }
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
       return "Please enter a valid email address.";
     }
 
-    // -------------------------------------------------
     // PASSWORD
-    // -------------------------------------------------
-
     if (!password) {
       return "Please create a password.";
     }
@@ -254,20 +207,12 @@ const Signup = () => {
       return "Password must be at least 8 characters.";
     }
 
-    // bcrypt maximum safe input
-    // is 72 bytes.
-
-    if (
-      new TextEncoder().encode(password).length >
-      72
-    ) {
+    // bcrypt maximum safe input: 72 bytes
+    if (new TextEncoder().encode(password).length > 72) {
       return "Password cannot exceed 72 bytes.";
     }
 
-    // -------------------------------------------------
     // CONFIRM PASSWORD
-    // -------------------------------------------------
-
     if (!confirmPassword) {
       return "Please confirm your password.";
     }
@@ -286,15 +231,13 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (loading) return;
+
     setError("");
     setSuccess("");
 
-    // -------------------------------------------------
     // FRONTEND VALIDATION
-    // -------------------------------------------------
-
-    const validationError =
-      validateForm();
+    const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
@@ -304,191 +247,101 @@ const Signup = () => {
     try {
       setLoading(true);
 
-      // ------------------------------------------------
       // CLEAN DATA
-      // ------------------------------------------------
+      const name = formData.name.trim();
+      const email = formData.email.trim().toLowerCase();
+      const password = formData.password;
+      const confirmPassword = formData.confirmPassword;
 
-      const name =
-        formData.name.trim();
+      // PUBLIC SIGNUP
+      // Do not send a role from the frontend.
+      // Backend should create public accounts as "user".
 
-      const email =
-        formData.email
-          .trim()
-          .toLowerCase();
+      const apiUrl = `${BASE_URL.replace(/\/+$/, "")}/api/auth/signup`;
 
-      const password =
-        formData.password;
+      console.log("SIGNUP REQUEST:", {
+        url: apiUrl,
+        email,
+      });
 
-      const confirmPassword =
-        formData.confirmPassword;
-
-      // ------------------------------------------------
-      // DEBUG
-      // ------------------------------------------------
-
-      console.log(
-        "SIGNUP REQUEST:",
+      const response = await axios.post(
+        apiUrl,
         {
           name,
           email,
           password,
           confirmPassword,
-          passwordsMatch:
-            password ===
-            confirmPassword,
+        },
+        {
+          timeout: 15000,
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
 
-      // ------------------------------------------------
-      // PUBLIC SIGNUP
-      // ------------------------------------------------
-      //
-      // IMPORTANT:
-      //
-      // Do NOT send role from frontend.
-      //
-      // Backend ALWAYS creates public signup
-      // accounts with role: "user".
-      //
-      // ------------------------------------------------
+      console.log("SIGNUP RESPONSE:", response.data);
 
-      const response =
-        await axios.post(
-          `${BASE_URL}/api/auth/signup`,
-          {
-            name,
-            email,
-            password,
-            confirmPassword,
-          },
-          {
-            timeout: 15000,
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-          }
-        );
-
-      // ------------------------------------------------
-      // RESPONSE
-      // ------------------------------------------------
-
-      console.log(
-        "SIGNUP RESPONSE:",
-        response.data
-      );
-
-      const data =
-        response.data;
+      const data = response.data;
 
       if (!data?.success) {
         throw new Error(
-          data?.message ||
-            "Unable to create your account."
+          data?.message || "Unable to create your account."
         );
       }
 
       // =================================================
-      // CASE 1
-      // BACKEND RETURNS TOKEN + USER
+      // CASE 1: BACKEND RETURNS TOKEN + USER
       // =================================================
 
-      if (
-        data.token &&
-        data.user
-      ) {
-        const user =
-          data.user;
+      if (data.token && data.user) {
+        const user = data.user;
 
-        const role =
-          String(
-            user.role ||
-              "user"
-          )
-            .trim()
-            .toLowerCase();
+        const role = String(user.role || "user")
+          .trim()
+          .toLowerCase();
 
-        // ------------------------------------------------
-        // SECURITY CHECK
-        // ------------------------------------------------
-        //
-        // Public signup MUST NEVER create:
-        //
-        // artist
-        // admin
-        // superadmin
-        //
-        // ------------------------------------------------
-
+        // PUBLIC SIGNUP MUST ONLY CREATE USER ACCOUNTS.
         if (role !== "user") {
           throw new Error(
             "Invalid account role returned by the server."
           );
         }
 
-        // ------------------------------------------------
         // STORE TOKEN
-        // ------------------------------------------------
+        localStorage.setItem("token", data.token);
 
-        localStorage.setItem(
-          "token",
-          data.token
-        );
-
-        // ------------------------------------------------
         // STORE USER
-        // ------------------------------------------------
+        localStorage.setItem("user", JSON.stringify(user));
 
-        localStorage.setItem(
-          "user",
-          JSON.stringify(user)
-        );
-
-        // ------------------------------------------------
         // STORE ROLE
-        // ------------------------------------------------
+        localStorage.setItem("role", role);
 
-        localStorage.setItem(
-          "role",
-          role
-        );
-
-        // ------------------------------------------------
         // APPROVAL STATUS
-        // ------------------------------------------------
+        const approvalStatus =
+          user.artistApplicationStatus ||
+          user.approvalStatus ||
+          user.artistApplication?.status ||
+          "";
 
-        if (
-          user.approvalStatus
-        ) {
+        if (approvalStatus) {
           localStorage.setItem(
             "approvalStatus",
-            user.approvalStatus
+            approvalStatus
           );
         } else {
-          localStorage.removeItem(
-            "approvalStatus"
-          );
+          localStorage.removeItem("approvalStatus");
         }
 
-        // ------------------------------------------------
         // AUTH CONTEXT
-        // ------------------------------------------------
+        login(data.token, user);
 
-        login(data.token);
-
-        // ------------------------------------------------
         // SUCCESS
-        // ------------------------------------------------
-
         setSuccess(
-          "Account created successfully. Welcome to JOY MUSIC!"
+          "Account created successfully. Welcome to LYRICS WAYYY!"
         );
 
-        // ------------------------------------------------
         // REDIRECT
-        // ------------------------------------------------
-
         setTimeout(() => {
           navigate("/home", {
             replace: true,
@@ -499,8 +352,7 @@ const Signup = () => {
       }
 
       // =================================================
-      // CASE 2
-      // BACKEND CREATES ACCOUNT WITHOUT LOGIN
+      // CASE 2: ACCOUNT CREATED WITHOUT LOGIN
       // =================================================
 
       setSuccess(
@@ -516,71 +368,35 @@ const Signup = () => {
         });
       }, 900);
     } catch (error) {
-      // ------------------------------------------------
-      // LOG
-      // ------------------------------------------------
-
-      console.error(
-        "SIGNUP ERROR:",
-        error
-      );
-
+      console.error("SIGNUP ERROR:", error);
       console.error(
         "SIGNUP SERVER RESPONSE:",
         error?.response?.data
       );
 
-      // ------------------------------------------------
-      // DEFAULT MESSAGE
-      // ------------------------------------------------
-
       let message =
         "Unable to create your account. Please try again.";
 
-      // ------------------------------------------------
       // SERVER MESSAGE
-      // ------------------------------------------------
-
-      if (
-        error?.response?.data
-          ?.message
-      ) {
-        message =
-          error.response.data.message;
+      if (error?.response?.data?.message) {
+        message = error.response.data.message;
       }
 
-      // ------------------------------------------------
-      // NETWORK ERROR
-      // ------------------------------------------------
-
-      else if (
-        error?.code ===
-        "ECONNABORTED"
-      ) {
+      // TIMEOUT
+      else if (error?.code === "ECONNABORTED") {
         message =
           "The server took too long to respond. Please try again.";
       }
 
-      // ------------------------------------------------
       // CONNECTION ERROR
-      // ------------------------------------------------
-
-      else if (
-        !error?.response
-      ) {
+      else if (!error?.response) {
         message =
           "Unable to connect to the server. Please check your connection.";
       }
 
-      // ------------------------------------------------
-      // JAVASCRIPT ERROR
-      // ------------------------------------------------
-
-      else if (
-        error?.message
-      ) {
-        message =
-          error.message;
+      // OTHER JAVASCRIPT ERROR
+      else if (error?.message) {
+        message = error.message;
       }
 
       setError(message);
@@ -611,9 +427,7 @@ const Signup = () => {
         background: BASE,
       }}
     >
-      {/* =================================================
-          BACKGROUND GLOW
-      ================================================= */}
+      {/* BACKGROUND GLOW */}
 
       <div
         className="
@@ -668,9 +482,7 @@ const Signup = () => {
         }}
       />
 
-      {/* =================================================
-          FLOATING MUSIC ICONS
-      ================================================= */}
+      {/* FLOATING MUSIC ICONS */}
 
       <div
         className="
@@ -681,10 +493,7 @@ const Signup = () => {
           lg:block
         "
       >
-        <FloatingOrb
-          icon={Music2}
-          color={PURPLE}
-        />
+        <FloatingOrb icon={Music2} color={PURPLE} />
       </div>
 
       <div
@@ -696,19 +505,15 @@ const Signup = () => {
           lg:block
         "
       >
-        <FloatingOrb
-          icon={Headphones}
-          color={TEAL}
-        />
+        <FloatingOrb icon={Headphones} color={TEAL} />
       </div>
 
-      {/* =================================================
-          MAIN CARD
-      ================================================= */}
+      {/* MAIN CARD */}
 
       <div
         className="
           relative
+          z-10
           w-full
           max-w-6xl
           rounded-[36px]
@@ -716,8 +521,7 @@ const Signup = () => {
         "
         style={{
           background: BASE,
-          boxShadow:
-            "18px 18px 40px #0f141a,-18px -18px 40px #2a3543",
+          boxShadow: OUTER_SHADOW,
         }}
       >
         <div
@@ -727,9 +531,7 @@ const Signup = () => {
             lg:grid-cols-[0.95fr_1.05fr]
           "
         >
-          {/* =================================================
-              LEFT BRAND SECTION
-          ================================================= */}
+          {/* LEFT BRAND SECTION */}
 
           <div
             className="
@@ -789,7 +591,7 @@ const Signup = () => {
                   style={{
                     background: BASE,
                     boxShadow:
-                      "8px 8px 16px #0f141a,-8px -8px 16px #2a3543",
+                      "8px 8px 16px #0f141a, -8px -8px 16px #2a3543",
                   }}
                 >
                   <Music2
@@ -809,7 +611,7 @@ const Signup = () => {
                       text-white
                     "
                   >
-                    JOY
+                  LYRICS
                   </h1>
 
                   <p
@@ -819,7 +621,7 @@ const Signup = () => {
                       tracking-[0.3em]
                     "
                   >
-                    MUSIC
+                    WAYYY
                   </p>
                 </div>
               </div>
@@ -840,8 +642,7 @@ const Signup = () => {
                 "
                 style={{
                   background: BASE,
-                  boxShadow:
-                    "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+                  boxShadow: INNER_SHADOW,
                 }}
               >
                 <Sparkles
@@ -874,9 +675,7 @@ const Signup = () => {
                 Create your
 
                 <span
-                  className="
-                    block
-                  "
+                  className="block"
                   style={{
                     color: PURPLE,
                   }}
@@ -893,9 +692,8 @@ const Signup = () => {
                   leading-7
                 "
               >
-                Build your personal music
-                experience, discover songs,
-                create collections and enjoy
+                Build your personal music experience,
+                discover songs, create collections and enjoy
                 your sound your way.
               </p>
 
@@ -940,15 +738,10 @@ const Signup = () => {
               "
             >
               <div
-                className="
-                  w-2
-                  h-2
-                  rounded-full
-                "
+                className="w-2 h-2 rounded-full"
                 style={{
                   background: TEAL,
-                  boxShadow:
-                    `0 0 12px ${TEAL}`,
+                  boxShadow: `0 0 12px ${TEAL}`,
                 }}
               />
 
@@ -956,9 +749,7 @@ const Signup = () => {
             </div>
           </div>
 
-          {/* =================================================
-              RIGHT SIGNUP FORM
-          ================================================= */}
+          {/* RIGHT SIGNUP FORM */}
 
           <div
             className="
@@ -970,16 +761,8 @@ const Signup = () => {
               items-center
             "
           >
-            <div
-              className="
-                w-full
-                max-w-md
-                mx-auto
-              "
-            >
-              {/* =================================================
-                  MOBILE LOGO
-              ================================================= */}
+            <div className="w-full max-w-md mx-auto">
+              {/* MOBILE LOGO */}
 
               <div
                 className="
@@ -1003,7 +786,7 @@ const Signup = () => {
                   style={{
                     background: BASE,
                     boxShadow:
-                      "7px 7px 14px #0f141a,-7px -7px 14px #2a3543",
+                      "7px 7px 14px #0f141a, -7px -7px 14px #2a3543",
                   }}
                 >
                   <Music2
@@ -1023,7 +806,7 @@ const Signup = () => {
                       text-white
                     "
                   >
-                    JOY MUSIC
+                    LYRICS WAYYY
                   </p>
 
                   <p
@@ -1038,9 +821,7 @@ const Signup = () => {
                 </div>
               </div>
 
-              {/* =================================================
-                  HEADER
-              ================================================= */}
+              {/* HEADER */}
 
               <div className="mb-7">
                 <div
@@ -1055,8 +836,7 @@ const Signup = () => {
                   "
                   style={{
                     background: BASE,
-                    boxShadow:
-                      "inset 5px 5px 10px #0f141a,inset -5px -5px 10px #2a3543",
+                    boxShadow: INNER_SHADOW,
                   }}
                 >
                   <UserRound
@@ -1078,21 +858,12 @@ const Signup = () => {
                   Create account
                 </h2>
 
-                <p
-                  className="
-                    text-sm
-                    text-gray-500
-                    mt-2
-                  "
-                >
-                  Start your JOY MUSIC
-                  journey today.
+                <p className="text-sm text-gray-500 mt-2">
+                  Start your LYRICS WAYYY journey today.
                 </p>
               </div>
 
-              {/* =================================================
-                  ERROR
-              ================================================= */}
+              {/* ERROR */}
 
               {error && (
                 <div
@@ -1106,8 +877,7 @@ const Signup = () => {
                   "
                   style={{
                     background: BASE,
-                    boxShadow:
-                      "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+                    boxShadow: INNER_SHADOW,
                   }}
                 >
                   <div
@@ -1121,8 +891,7 @@ const Signup = () => {
                       shrink-0
                     "
                     style={{
-                      background:
-                        "rgba(239,68,68,0.08)",
+                      background: "rgba(239,68,68,0.08)",
                     }}
                   >
                     <AlertCircle
@@ -1144,9 +913,7 @@ const Signup = () => {
                 </div>
               )}
 
-              {/* =================================================
-                  SUCCESS
-              ================================================= */}
+              {/* SUCCESS */}
 
               {success && (
                 <div
@@ -1160,8 +927,7 @@ const Signup = () => {
                   "
                   style={{
                     background: BASE,
-                    boxShadow:
-                      "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+                    boxShadow: INNER_SHADOW,
                   }}
                 >
                   <CheckCircle2
@@ -1172,10 +938,7 @@ const Signup = () => {
                   />
 
                   <p
-                    className="
-                      text-xs
-                      font-medium
-                    "
+                    className="text-xs font-medium"
                     style={{
                       color: TEAL,
                     }}
@@ -1185,9 +948,7 @@ const Signup = () => {
                 </div>
               )}
 
-              {/* =================================================
-                  FORM
-              ================================================= */}
+              {/* FORM */}
 
               <form
                 onSubmit={handleSubmit}
@@ -1221,12 +982,11 @@ const Signup = () => {
                   autoComplete="email"
                 />
 
-                {/* =================================================
-                    PASSWORD
-                ================================================= */}
+                {/* PASSWORD */}
 
                 <div>
                   <label
+                    htmlFor="password"
                     className="
                       block
                       text-xs
@@ -1240,11 +1000,7 @@ const Signup = () => {
                   </label>
 
                   <div
-                    className={`
-                      relative
-                      rounded-2xl
-                      ${insetShadow}
-                    `}
+                    className={`relative rounded-2xl ${insetShadow}`}
                   >
                     <LockKeyhole
                       size={18}
@@ -1256,48 +1012,44 @@ const Signup = () => {
                         pointer-events-none
                       "
                       style={{
-                        color:
-                          formData.password
-                            ? PURPLE
-                            : "#68707d",
+                        color: formData.password
+                          ? PURPLE
+                          : "#68707d",
                       }}
                     />
 
-                 <input
-  type={showPassword ? "text" : "password"}
-  name="password"
-  value={formData.password}
-  onChange={handleChange}
-  placeholder="Create a password"
-  autoComplete="new-password"
-  disabled={loading}
-  className="
-    w-full
-    h-14
-    rounded-2xl
-    bg-transparent
-    pl-12
-    pr-12
-    text-sm
-    text-white
-    placeholder:text-gray-600
-    outline-none
-    disabled:opacity-50
-  "
-  style={{
-    background: BASE,
-    boxShadow:
-      "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
-  }}
-/>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Create a password"
+                      autoComplete="new-password"
+                      disabled={loading}
+                      className="
+                        w-full
+                        h-14
+                        rounded-2xl
+                        bg-transparent
+                        pl-12
+                        pr-12
+                        text-sm
+                        text-white
+                        placeholder:text-gray-600
+                        outline-none
+                        disabled:opacity-50
+                      "
+                      style={{
+                        background: BASE,
+                        boxShadow: INNER_SHADOW,
+                      }}
+                    />
 
                     <button
                       type="button"
                       onClick={() =>
-                        setShowPassword(
-                          (prev) =>
-                            !prev
-                        )
+                        setShowPassword((prev) => !prev)
                       }
                       disabled={loading}
                       aria-label={
@@ -1315,13 +1067,9 @@ const Signup = () => {
                       "
                     >
                       {showPassword ? (
-                        <EyeOff
-                          size={18}
-                        />
+                        <EyeOff size={18} />
                       ) : (
-                        <Eye
-                          size={18}
-                        />
+                        <Eye size={18} />
                       )}
                     </button>
                   </div>
@@ -1339,18 +1087,14 @@ const Signup = () => {
                           className="text-[10px] font-semibold"
                           style={{
                             color:
-                              passwordStrength.label ===
-                              "Strong"
+                              passwordStrength.label === "Strong"
                                 ? TEAL
-                                : passwordStrength.label ===
-                                  "Good"
-                                ? PURPLE
-                                : "#f87171",
+                                : passwordStrength.label === "Good"
+                                  ? PURPLE
+                                  : "#f87171",
                           }}
                         >
-                          {
-                            passwordStrength.label
-                          }
+                          {passwordStrength.label}
                         </span>
                       </div>
 
@@ -1372,46 +1116,35 @@ const Signup = () => {
                             duration-300
                           "
                           style={{
-                            width:
-                              passwordStrength.width,
+                            width: passwordStrength.width,
                             background:
-                              passwordStrength.label ===
-                              "Strong"
+                              passwordStrength.label === "Strong"
                                 ? TEAL
-                                : passwordStrength.label ===
-                                  "Good"
-                                ? PURPLE
-                                : "#f87171",
+                                : passwordStrength.label === "Good"
+                                  ? PURPLE
+                                  : "#f87171",
                           }}
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-3">
                         <PasswordRule
-                          valid={
-                            passwordRules.length
-                          }
+                          valid={passwordRules.length}
                           text="8+ characters"
                         />
 
                         <PasswordRule
-                          valid={
-                            passwordRules.uppercase
-                          }
+                          valid={passwordRules.uppercase}
                           text="Uppercase"
                         />
 
                         <PasswordRule
-                          valid={
-                            passwordRules.lowercase
-                          }
+                          valid={passwordRules.lowercase}
                           text="Lowercase"
                         />
 
                         <PasswordRule
-                          valid={
-                            passwordRules.number
-                          }
+                          valid={passwordRules.number}
                           text="Number"
                         />
                       </div>
@@ -1419,12 +1152,11 @@ const Signup = () => {
                   )}
                 </div>
 
-                {/* =================================================
-                    CONFIRM PASSWORD
-                ================================================= */}
+                {/* CONFIRM PASSWORD */}
 
                 <div>
                   <label
+                    htmlFor="confirmPassword"
                     className="
                       block
                       text-xs
@@ -1438,11 +1170,7 @@ const Signup = () => {
                   </label>
 
                   <div
-                    className={`
-                      relative
-                      rounded-2xl
-                      ${insetShadow}
-                    `}
+                    className={`relative rounded-2xl ${insetShadow}`}
                   >
                     <LockKeyhole
                       size={18}
@@ -1454,50 +1182,48 @@ const Signup = () => {
                         pointer-events-none
                       "
                       style={{
-                        color:
-                          passwordsMatch
-                            ? TEAL
-                            : formData.confirmPassword
+                        color: passwordsMatch
+                          ? TEAL
+                          : formData.confirmPassword
                             ? PURPLE
                             : "#68707d",
                       }}
                     />
 
-                  <input
-  type={showConfirmPassword ? "text" : "password"}
-  name="confirmPassword"
-  value={formData.confirmPassword}
-  onChange={handleChange}
-  placeholder="Confirm your password"
-  autoComplete="new-password"
-  disabled={loading}
-  className="
-    w-full
-    h-14
-    rounded-2xl
-    bg-transparent
-    pl-12
-    pr-12
-    text-sm
-    text-white
-    placeholder:text-gray-600
-    outline-none
-    disabled:opacity-50
-  "
-  style={{
-    background: BASE,
-    boxShadow:
-      "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
-  }}
-/>
+                    <input
+                      id="confirmPassword"
+                      type={
+                        showConfirmPassword ? "text" : "password"
+                      }
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Confirm your password"
+                      autoComplete="new-password"
+                      disabled={loading}
+                      className="
+                        w-full
+                        h-14
+                        rounded-2xl
+                        bg-transparent
+                        pl-12
+                        pr-12
+                        text-sm
+                        text-white
+                        placeholder:text-gray-600
+                        outline-none
+                        disabled:opacity-50
+                      "
+                      style={{
+                        background: BASE,
+                        boxShadow: INNER_SHADOW,
+                      }}
+                    />
 
                     <button
                       type="button"
                       onClick={() =>
-                        setShowConfirmPassword(
-                          (prev) =>
-                            !prev
-                        )
+                        setShowConfirmPassword((prev) => !prev)
                       }
                       disabled={loading}
                       aria-label={
@@ -1515,13 +1241,9 @@ const Signup = () => {
                       "
                     >
                       {showConfirmPassword ? (
-                        <EyeOff
-                          size={18}
-                        />
+                        <EyeOff size={18} />
                       ) : (
-                        <Eye
-                          size={18}
-                        />
+                        <Eye size={18} />
                       )}
                     </button>
                   </div>
@@ -1564,9 +1286,7 @@ const Signup = () => {
                   )}
                 </div>
 
-                {/* =================================================
-                    CREATE ACCOUNT
-                ================================================= */}
+                {/* CREATE ACCOUNT */}
 
                 <button
                   type="submit"
@@ -1618,7 +1338,6 @@ const Signup = () => {
                         size={19}
                         className="animate-spin"
                       />
-
                       Creating account...
                     </>
                   ) : (
@@ -1638,9 +1357,7 @@ const Signup = () => {
                 </button>
               </form>
 
-              {/* =================================================
-                  LOGIN LINK
-              ================================================= */}
+              {/* LOGIN LINK DIVIDER */}
 
               <div
                 className="
@@ -1651,11 +1368,10 @@ const Signup = () => {
                 "
               >
                 <div
-                  className="
-                    h-px
-                    flex-1
-                    bg-[#303641]
-                  "
+                  className="h-px flex-1"
+                  style={{
+                    background: "#303641",
+                  }}
                 />
 
                 <span
@@ -1670,19 +1386,20 @@ const Signup = () => {
                 </span>
 
                 <div
-                  className="
-                    h-px
-                    flex-1
-                    bg-[#303641]
-                  "
+                  className="h-px flex-1"
+                  style={{
+                    background: "#303641",
+                  }}
                 />
               </div>
+
+              {/* SIGN IN LINK */}
 
               <Link
                 to="/signin"
                 className="
                   w-full
-                  h-13
+                  min-h-[52px]
                   rounded-2xl
                   flex
                   items-center
@@ -1699,19 +1416,14 @@ const Signup = () => {
                 style={{
                   background: BASE,
                   boxShadow:
-                    "7px 7px 14px #0f141a,-7px -7px 14px #2a3543",
+                    "7px 7px 14px #0f141a, -7px -7px 14px #2a3543",
                 }}
               >
-                <LockKeyhole
-                  size={17}
-                />
-
+                <LockKeyhole size={17} />
                 Sign in instead
               </Link>
 
-              {/* =================================================
-                  SECURITY
-              ================================================= */}
+              {/* SECURITY */}
 
               <div
                 className="
@@ -1729,12 +1441,7 @@ const Signup = () => {
                   }}
                 />
 
-                <span
-                  className="
-                    text-[10px]
-                    text-gray-600
-                  "
-                >
+                <span className="text-[10px] text-gray-600">
                   Your account is protected
                 </span>
               </div>
@@ -1743,9 +1450,7 @@ const Signup = () => {
         </div>
       </div>
 
-      {/* =================================================
-          FOOTER
-      ================================================= */}
+      {/* FOOTER */}
 
       <div
         className="
@@ -1764,7 +1469,7 @@ const Signup = () => {
             tracking-wider
           "
         >
-          © {new Date().getFullYear()} JOY MUSIC
+          © {new Date().getFullYear()} LYRICS WAYYY
         </p>
       </div>
     </div>
@@ -1848,14 +1553,14 @@ const InputField = ({
           "
           style={{
             background: BASE,
-            boxShadow:
-              "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
+            boxShadow: INNER_SHADOW,
           }}
         />
       </div>
     </div>
   );
 };
+
 // =====================================================
 // PASSWORD RULE
 // =====================================================
@@ -1875,21 +1580,24 @@ const PasswordRule = ({ valid, text }) => {
       "
       style={{
         background: BASE,
-        boxShadow:
-          "inset 5px 5px 10px #0f141a, inset -5px -5px 10px #2a3543",
+        boxShadow: INNER_SHADOW,
       }}
     >
       {valid ? (
         <Check
           size={12}
           strokeWidth={2.5}
-          style={{ color: TEAL }}
+          style={{
+            color: TEAL,
+          }}
         />
       ) : (
         <X
           size={12}
           strokeWidth={2}
-          style={{ color: "#68707d" }}
+          style={{
+            color: "#68707d",
+          }}
         />
       )}
 
@@ -1904,6 +1612,7 @@ const PasswordRule = ({ valid, text }) => {
     </div>
   );
 };
+
 // =====================================================
 // FEATURE CARD
 // =====================================================
@@ -1916,14 +1625,10 @@ const FeatureCard = ({
 }) => {
   return (
     <div
-      className="
-        rounded-2xl
-        p-4
-      "
+      className="rounded-2xl p-4"
       style={{
         background: BASE,
-        boxShadow:
-          "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+        boxShadow: INNER_SHADOW,
       }}
     >
       <div
@@ -1939,7 +1644,7 @@ const FeatureCard = ({
         style={{
           background: BASE,
           boxShadow:
-            "5px 5px 10px #0f141a,-5px -5px 10px #2a3543",
+            "5px 5px 10px #0f141a, -5px -5px 10px #2a3543",
         }}
       >
         <Icon
@@ -1950,23 +1655,11 @@ const FeatureCard = ({
         />
       </div>
 
-      <p
-        className="
-          text-xs
-          font-bold
-          text-gray-200
-        "
-      >
+      <p className="text-xs font-bold text-gray-200">
         {title}
       </p>
 
-      <p
-        className="
-          text-[10px]
-          text-gray-600
-          mt-1
-        "
-      >
+      <p className="text-[10px] text-gray-600 mt-1">
         {text}
       </p>
     </div>
@@ -1995,7 +1688,7 @@ const FloatingOrb = ({
       style={{
         background: BASE,
         boxShadow:
-          "10px 10px 20px #0f141a,-10px -10px 20px #2a3543",
+          "10px 10px 20px #0f141a, -10px -10px 20px #2a3543",
       }}
     >
       <Icon

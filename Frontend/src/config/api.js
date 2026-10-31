@@ -5,13 +5,18 @@ import axios from "axios";
 // BACKEND BASE URL
 // =====================================================
 
-export const BASE_URL = "https://lyrics-wayyy-backend.onrender.com";
+// Local development → localhost
+// Production → Render
+
+export const BASE_URL = import.meta.env.DEV
+  ? "http://localhost:5001"
+  : "https://lyrics-wayyy-backend.onrender.com";
+
 // =====================================================
 // API BASE URL
 // =====================================================
 
-export const API_BASE_URL =
-  `${BASE_URL}/api`;
+export const API_BASE_URL = `${BASE_URL}/api`;
 
 // =====================================================
 // AXIOS API INSTANCE
@@ -19,8 +24,7 @@ export const API_BASE_URL =
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-
-  timeout: 15000,
+  timeout: 30000,
 
   headers: {
     "Content-Type": "application/json",
@@ -31,32 +35,19 @@ const api = axios.create({
 // =====================================================
 // REQUEST INTERCEPTOR
 // =====================================================
-//
-// Automatically attaches the current JWT.
-//
-// Authorization:
-// Bearer <token>
-// =====================================================
 
 api.interceptors.request.use(
   (config) => {
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     if (token) {
-      config.headers =
-        config.headers || {};
-
-      config.headers.Authorization =
-        `Bearer ${token}`;
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
   },
-
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // =====================================================
@@ -64,121 +55,48 @@ api.interceptors.request.use(
 // =====================================================
 
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
 
   (error) => {
-    // -------------------------------------------------
-    // SERVER RESPONSE
-    // -------------------------------------------------
-
     if (error.response) {
-      const status =
-        error.response.status;
+      const status = error.response.status;
+      const responseData = error.response.data;
 
-      const responseData =
-        error.response.data;
-
-      console.error(
-        "API ERROR:",
-        status,
-        responseData
-      );
-
-      // ------------------------------------------------
-      // UNAUTHORIZED
-      // ------------------------------------------------
-      //
-      // Do NOT immediately redirect here.
-      //
-      // Some components may intentionally handle 401
-      // themselves.
-      //
-      // We only mark the token as invalid.
-      // ------------------------------------------------
+      console.error("API ERROR:", status, responseData);
 
       if (status === 401) {
-        console.warn(
-          "AUTHENTICATION FAILED: JWT rejected by server."
-        );
+        console.warn("AUTHENTICATION FAILED: JWT rejected by server.");
 
-        // Remove only the authentication token.
-        //
-        // Do NOT remove arbitrary application data.
         localStorage.removeItem("token");
-
-        // Keep compatibility if older code uses this.
         localStorage.removeItem("accessToken");
+        localStorage.removeItem("isAuthenticated");
 
-        localStorage.removeItem(
-          "isAuthenticated"
-        );
-
-        // Tell the application that authentication
-        // has expired.
         window.dispatchEvent(
-          new CustomEvent(
-            "auth:unauthorized",
-            {
-              detail: {
-                status,
-                data: responseData,
-              },
-            }
-          )
+          new CustomEvent("auth:unauthorized", {
+            detail: {
+              status,
+              data: responseData,
+            },
+          })
         );
       }
-
-      // ------------------------------------------------
-      // FORBIDDEN
-      // ------------------------------------------------
 
       if (status === 403) {
-        console.warn(
-          "AUTHORIZATION FAILED: user does not have permission."
-        );
+        console.warn("AUTHORIZATION FAILED.");
       }
-
-      // ------------------------------------------------
-      // RATE LIMITED
-      // ------------------------------------------------
 
       if (status === 429) {
-        console.warn(
-          "REQUEST RATE LIMITED."
-        );
+        console.warn("REQUEST RATE LIMITED.");
       }
-    }
-
-    // =================================================
-    // REQUEST SENT BUT NO RESPONSE
-    // =================================================
-
-    else if (error.request) {
-      console.error(
-        "API SERVER NOT REACHABLE:",
-        error.message
-      );
-    }
-
-    // =================================================
-    // REQUEST CONFIGURATION ERROR
-    // =================================================
-
-    else {
-      console.error(
-        "API REQUEST ERROR:",
-        error.message
-      );
+    } else if (error.request) {
+      console.error("API SERVER NOT REACHABLE:", error.message);
+    } else {
+      console.error("API REQUEST ERROR:", error.message);
     }
 
     return Promise.reject(error);
   }
 );
 
-// =====================================================
-// EXPORT
-// =====================================================
-
 export default api;
+

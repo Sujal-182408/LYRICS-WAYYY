@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
 import {
   ArrowRight,
   Eye,
@@ -16,42 +15,41 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
-
 import axios from "axios";
-
 import { useAuth } from "../../AuthContext";
 import { BASE_URL } from "../../config/api";
 
 // =====================================================
-// COLORS
+// THEME COLORS
 // =====================================================
 
 const BASE = "#252933";
 const LIGHT = "#2a3543";
 const DARK = "#0f141a";
-
 const PURPLE = "#8c7cf7";
 const TEAL = "#2bd4c4";
 
 // =====================================================
-// NEUMORPHISM
+// SHADOWS
 // =====================================================
 
-const neuShadow =
-  "shadow-[8px_8px_16px_#0f141a,-8px_-8px_16px_#2a3543]";
+const cardShadow = `18px 18px 38px ${DARK}, -12px -12px 30px ${LIGHT}`;
 
-const insetShadow =
-  "shadow-[inset_6px_6px_12px_#0f141a,inset_-6px_-6px_12px_#2a3543]";
+const insetShadow = `inset 5px 5px 10px ${DARK}, inset -5px -5px 10px ${LIGHT}`;
+
+const softShadow = `7px 7px 14px ${DARK}, -7px -7px 14px ${LIGHT}`;
+
+const OUTER_SHADOW =
+  "12px 12px 24px #0f141a, -12px -12px 24px #2a3543";
+
+const INNER_SHADOW =
+  "inset 6px 6px 12px #0f141a, inset -6px -6px 12px #2a3543";
 
 // =====================================================
-// ALLOWED ROLES
+// SUPPORTED ROLES
 // =====================================================
 
-const SUPPORTED_ROLES = [
-  "user",
-  "artist",
-  "superadmin",
-];
+const SUPPORTED_ROLES = ["user", "artist", "superadmin"];
 
 // =====================================================
 // SIGN IN
@@ -66,17 +64,10 @@ const Signin = () => {
     password: "",
   });
 
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [success, setSuccess] =
-    useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // =====================================================
   // INPUT CHANGE
@@ -90,13 +81,8 @@ const Signin = () => {
       [name]: value,
     }));
 
-    if (error) {
-      setError("");
-    }
-
-    if (success) {
-      setSuccess("");
-    }
+    if (error) setError("");
+    if (success) setSuccess("");
   };
 
   // =====================================================
@@ -108,73 +94,33 @@ const Signin = () => {
       .trim()
       .toLowerCase();
 
-    console.log(
-      "REDIRECTING USER WITH ROLE:",
-      normalizedRole
-    );
+    console.log("REDIRECTING USER WITH ROLE:", normalizedRole);
 
     switch (normalizedRole) {
-      // -------------------------------------------------
-      // SUPER ADMIN
-      // -------------------------------------------------
-
       case "superadmin":
-        console.log(
-          "REDIRECT TARGET: /superadmin/dashboard"
-        );
-
-        navigate(
-          "/superadmin/dashboard",
-          {
-            replace: true,
-          }
-        );
-
+        navigate("/superadmin/dashboard", {
+          replace: true,
+        });
         return;
-
-      // -------------------------------------------------
-      // ARTIST
-      // -------------------------------------------------
 
       case "artist":
-        console.log(
-          "REDIRECT TARGET: /artist/dashboard"
-        );
-
-       navigate("/home", { replace: true });
-
+        navigate("/home", {
+          replace: true,
+        });
         return;
-
-      // -------------------------------------------------
-      // NORMAL USER
-      // -------------------------------------------------
 
       case "user":
-        console.log(
-          "REDIRECT TARGET: /home"
-        );
-
         navigate("/home", {
           replace: true,
         });
-
         return;
-
-      // -------------------------------------------------
-      // UNKNOWN ROLE
-      // -------------------------------------------------
 
       default:
-        console.error(
-          "UNKNOWN ROLE:",
-          normalizedRole
-        );
+        console.error("UNKNOWN ROLE:", normalizedRole);
 
         navigate("/home", {
           replace: true,
         });
-
-        return;
     }
   };
 
@@ -182,137 +128,139 @@ const Signin = () => {
   // LOGIN
   // =====================================================
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+    if (loading) return;
 
-  if (loading) return;
+    setError("");
+    setSuccess("");
 
-  setError("");
-  setSuccess("");
+    const email = formData.email.trim().toLowerCase();
+    const password = formData.password;
 
-  const email = formData.email.trim().toLowerCase();
-  const password = formData.password;
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
 
-  if (!email) {
-    setError("Please enter your email address.");
-    return;
-  }
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
 
-  if (!password) {
-    setError("Please enter your password.");
-    return;
-  }
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      const apiUrl = `${BASE_URL.replace(/\/+$/, "")}/api/auth/login`;
 
-  try {
-    const response = await axios.post(
-      `${BASE_URL.replace(/\/+$/, "")}/api/auth/login`,
-      { email, password },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 20000,
+      const response = await axios.post(
+        apiUrl,
+        { email, password },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 20000,
+        }
+      );
+
+      const data = response.data;
+
+      if (!data?.success) {
+        throw new Error(data?.message || "Login failed.");
       }
-    );
 
-    const data = response.data;
+      const token = data.token;
+      const user = data.user;
 
-    if (!data?.success) {
-      throw new Error(data?.message || "Login failed.");
-    }
+      if (!token || !user) {
+        throw new Error(
+          "The server did not return the required authentication information."
+        );
+      }
 
-    const token = data.token;
-    const user = data.user;
+      const role = String(user.role || "")
+        .trim()
+        .toLowerCase();
 
-    if (!token || !user) {
-      throw new Error(
-        "The server did not return the required authentication information."
+      if (!SUPPORTED_ROLES.includes(role)) {
+        throw new Error("Your account has an invalid role.");
+      }
+
+      // Save authenticated session.
+
+      localStorage.removeItem("approvalStatus");
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("role", role);
+
+      const approvalStatus =
+        user.artistApplicationStatus ||
+        user.approvalStatus ||
+        user.artistApplication?.status ||
+        "";
+
+      if (approvalStatus) {
+        localStorage.setItem(
+          "approvalStatus",
+          String(approvalStatus)
+        );
+      }
+
+      // Update authentication context.
+
+      login(token, user);
+
+      // Success messages.
+
+      if (role === "artist") {
+        setSuccess(
+          "Artist account verified. Opening your artist dashboard..."
+        );
+      } else if (role === "superadmin") {
+        setSuccess(
+          "Super Admin account verified. Opening dashboard..."
+        );
+      } else {
+        setSuccess("Welcome back. Redirecting...");
+      }
+
+      console.info("LOGIN SUCCESS:", {
+        userId: user._id,
+        role,
+      });
+
+      redirectByRole(role);
+    } catch (error) {
+      console.error("LOGIN REQUEST FAILED:", error);
+      console.error("REQUEST URL:", error.config?.url);
+      console.error("HTTP STATUS:", error.response?.status);
+      console.error(
+        "SERVER RESPONSE:",
+        JSON.stringify(error.response?.data, null, 2)
       );
+
+      if (error.response?.status === 429) {
+        setError(
+          error.response?.data?.message ||
+            "Too many login attempts. Please wait before trying again."
+        );
+      } else if (error.response?.status >= 500) {
+        setError(
+          "A server error occurred. Please try again later."
+        );
+      } else {
+        setError(
+          error.response?.data?.message ||
+            error.message ||
+            "Unable to sign in. Please check your credentials and try again."
+        );
+      }
+    } finally {
+      setLoading(false);
     }
-
-    const role = String(user.role || "")
-      .trim()
-      .toLowerCase();
-
-    if (!SUPPORTED_ROLES.includes(role)) {
-      throw new Error("Your account has an invalid role.");
-    }
-
-    // Save the authenticated session.
-    localStorage.removeItem("approvalStatus");
-
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
-    localStorage.setItem("role", role);
-
-    const approvalStatus =
-      user.artistApplicationStatus ||
-      user.approvalStatus ||
-      user.artistApplication?.status ||
-      "";
-
-    if (approvalStatus) {
-      localStorage.setItem(
-        "approvalStatus",
-        String(approvalStatus)
-      );
-    }
-
-    // Update the application's authentication context.
-    login(token, user);
-
-    // Show the appropriate success message.
-    if (role === "artist") {
-      setSuccess(
-        "Artist account verified. Opening your artist dashboard..."
-      );
-    } else if (role === "superadmin") {
-      setSuccess(
-        "Super Admin account verified. Opening dashboard..."
-      );
-    } else {
-      setSuccess("Welcome back. Redirecting...");
-    }
-
-    console.info("LOGIN SUCCESS:", {
-      userId: user._id,
-      role,
-    });
-
-    redirectByRole(role);
-
-} catch (error) {
-  console.error("LOGIN REQUEST FAILED:", error);
-  console.error("REQUEST URL:", error.config?.url);
-  console.error("HTTP STATUS:", error.response?.status);
-  console.error(
-    "SERVER RESPONSE:",
-    JSON.stringify(error.response?.data, null, 2)
-  );
-
-  if (error.response?.status === 429) {
-    setError(
-      error.response?.data?.message ||
-        "Too many login attempts. Please wait before trying again."
-    );
-  } else if (error.response?.status >= 500) {
-    setError("A server error occurred. Please try again later.");
-  } else {
-    setError(
-      error.response?.data?.message ||
-        "Unable to sign in. Please check your credentials and try again."
-    );
-  }
-} finally {
-  setLoading(false);
-}
-
-
-};
-
+  };
 
   // =====================================================
   // RENDER
@@ -321,138 +269,104 @@ const handleSubmit = async (e) => {
   return (
     <div
       className="
-        min-h-screen
-        w-full
-        overflow-hidden
         relative
         flex
+        min-h-screen
+        w-full
+        flex-col
         items-center
         justify-center
+        overflow-hidden
         px-4
-        py-8
+        py-7
+        sm:px-6
+        sm:py-10
         md:px-8
       "
       style={{
         background: BASE,
       }}
     >
-      {/* =================================================
-          BACKGROUND GLOW
-      ================================================= */}
+      {/* BACKGROUND LIGHTING */}
 
       <div
         className="
-          absolute
-          -top-40
-          -left-40
-          w-105
-          h-105
-          rounded-full
-          blur-[120px]
-          opacity-20
           pointer-events-none
+          absolute
+          -left-36
+          -top-40
+          h-80
+          w-80
+          rounded-full
+          opacity-[0.12]
+          blur-[110px]
         "
-        style={{
-          background: PURPLE,
-        }}
+        style={{ background: PURPLE }}
       />
 
       <div
         className="
+          pointer-events-none
           absolute
           -bottom-40
-          -right-40
-          w-115
-          h-115
+          -right-36
+          h-96
+          w-96
           rounded-full
-          blur-[130px]
-          opacity-15
-          pointer-events-none
+          opacity-[0.10]
+          blur-[120px]
         "
-        style={{
-          background: TEAL,
-        }}
+        style={{ background: TEAL }}
       />
 
       <div
         className="
+          pointer-events-none
           absolute
-          top-1/2
           left-1/2
+          top-1/2
+          h-[450px]
+          w-[450px]
           -translate-x-1/2
           -translate-y-1/2
-          w-175
-          h-175
           rounded-full
-          blur-[160px]
-          opacity-[0.04]
-          pointer-events-none
+          opacity-[0.035]
+          blur-[150px]
         "
-        style={{
-          background: PURPLE,
-        }}
+        style={{ background: PURPLE }}
       />
 
-      {/* =================================================
-          FLOATING MUSIC ORBS
-      ================================================= */}
+      {/* FLOATING DESKTOP ORBS */}
 
-      <div
-        className="
-          absolute
-          top-[12%]
-          left-[8%]
-          hidden
-          lg:block
-        "
-      >
-        <FloatingOrb
-          icon={Music2}
-          color={PURPLE}
-        />
+      <div className="absolute left-[8%] top-[12%] hidden lg:block">
+        <FloatingOrb icon={Music2} color={PURPLE} />
       </div>
 
-      <div
-        className="
-          absolute
-          bottom-[15%]
-          right-[8%]
-          hidden
-          lg:block
-        "
-      >
-        <FloatingOrb
-          icon={Headphones}
-          color={TEAL}
-        />
+      <div className="absolute bottom-[15%] right-[8%] hidden lg:block">
+        <FloatingOrb icon={Headphones} color={TEAL} />
       </div>
 
-      {/* =================================================
-          MAIN LOGIN CARD
-      ================================================= */}
+      {/* MAIN CARD */}
 
       <div
         className="
           relative
+          z-10
           w-full
           max-w-6xl
-          rounded-[36px]
           overflow-hidden
+          rounded-[26px]
+          sm:rounded-[32px]
+          lg:rounded-[36px]
         "
         style={{
           background: BASE,
-
-          boxShadow:
-            "18px 18px 40px #0f141a,-18px -18px 40px #2a3543",
+          boxShadow: cardShadow,
+          border: "1px solid rgba(255,255,255,0.025)",
         }}
       >
-        <div
-          className="
-            grid
-            grid-cols-1
-            lg:grid-cols-[1.05fr_0.95fr]
-          "
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+
           {/* =================================================
               LEFT BRAND SECTION
           ================================================= */}
@@ -461,42 +375,39 @@ const handleSubmit = async (e) => {
             className="
               relative
               hidden
-              lg:flex
+              min-h-[680px]
               flex-col
               justify-between
-              min-h-170
-              p-12
               overflow-hidden
+              p-12
+              lg:flex
+              xl:p-14
             "
           >
             <div
               className="
                 absolute
-                w-80
-                h-80
-                rounded-full
-                -top-32
                 -left-32
-                opacity-10
+                -top-32
+                h-80
+                w-80
+                rounded-full
+                opacity-[0.09]
               "
-              style={{
-                background: PURPLE,
-              }}
+              style={{ background: PURPLE }}
             />
 
             <div
               className="
                 absolute
-                w-96
-                h-96
-                rounded-full
                 -bottom-52
                 -right-44
+                h-96
+                w-96
+                rounded-full
                 opacity-[0.07]
               "
-              style={{
-                background: TEAL,
-              }}
+              style={{ background: TEAL }}
             />
 
             {/* LOGO */}
@@ -505,140 +416,76 @@ const handleSubmit = async (e) => {
               <div className="flex items-center gap-4">
                 <div
                   className="
-                    w-14
-                    h-14
-                    rounded-2xl
                     flex
+                    h-14
+                    w-14
                     items-center
                     justify-center
+                    rounded-2xl
                   "
                   style={{
                     background: BASE,
-
-                    boxShadow:
-                      "8px 8px 16px #0f141a,-8px -8px 16px #2a3543",
+                    boxShadow: softShadow,
+                    border: "1px solid rgba(255,255,255,0.035)",
                   }}
                 >
-                  <Music2
-                    size={27}
-                    style={{
-                      color: PURPLE,
-                    }}
-                  />
+                  <Music2 size={27} style={{ color: PURPLE }} />
                 </div>
 
                 <div>
-                  <h1
-                    className="
-                      text-xl
-                      font-black
-                      tracking-[0.15em]
-                      text-white
-                    "
-                  >
+                  <h1 className="text-xl font-black tracking-[0.15em] text-white">
                     LYRICS
                   </h1>
 
-                  <p
-                    className="
-                      text-[10px]
-                      text-gray-500
-                      tracking-[0.3em]
-                    "
-                  >
+                  <p className="text-[10px] tracking-[0.3em] text-gray-500">
                     WAYYY
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* CENTER */}
+            {/* BRAND CONTENT */}
 
-            <div
-              className="
-                relative
-                z-10
-                max-w-xl
-              "
-            >
+            <div className="relative z-10 max-w-xl">
               <div
                 className="
+                  mb-7
                   inline-flex
                   items-center
                   gap-2
-                  px-4
-                  py-2
                   rounded-full
-                  mb-7
+                  px-4
+                  py-2.5
                 "
                 style={{
                   background: BASE,
-
-                  boxShadow:
-                    "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+                  boxShadow: insetShadow,
+                  border: "1px solid rgba(255,255,255,0.025)",
                 }}
               >
-                <Sparkles
-                  size={15}
-                  style={{
-                    color: TEAL,
-                  }}
-                />
+                <Sparkles size={15} style={{ color: TEAL }} />
 
-                <span
-                  className="
-                    text-xs
-                    font-semibold
-                    text-gray-300
-                  "
-                >
+                <span className="text-xs font-semibold tracking-wide text-gray-300">
                   YOUR MUSIC. YOUR SPACE.
                 </span>
               </div>
 
-              <h2
-                className="
-                  text-5xl
-                  xl:text-6xl
-                  font-black
-                  leading-[1.05]
-                  text-white
-                "
-              >
+              <h2 className="text-5xl font-black leading-[1.05] text-white xl:text-6xl">
                 Music
-
                 <span
                   className="block"
-                  style={{
-                    color: PURPLE,
-                  }}
+                  style={{ color: PURPLE }}
                 >
                   starts here.
                 </span>
               </h2>
 
-              <p
-                className="
-                  mt-7
-                  max-w-md
-                  text-gray-400
-                  leading-7
-                "
-              >
-                Enter your personal music
-                space and continue where
-                your sound left off.
+              <p className="mt-7 max-w-md text-sm leading-7 text-gray-400">
+                Enter your personal music space and continue
+                where your sound left off.
               </p>
 
-              <div
-                className="
-                  grid
-                  grid-cols-2
-                  gap-4
-                  mt-9
-                  max-w-md
-                "
-              >
+              <div className="mt-9 grid max-w-md grid-cols-2 gap-4">
                 <FeatureCard
                   icon={Music2}
                   title="Your Library"
@@ -657,31 +504,14 @@ const handleSubmit = async (e) => {
 
             {/* SECURITY */}
 
-            <div
-              className="
-                relative
-                z-10
-                flex
-                items-center
-                gap-3
-                text-gray-500
-                text-xs
-              "
-            >
+            <div className="relative z-10 flex items-center gap-3 text-xs text-gray-500">
               <div
-                className="
-                  w-2
-                  h-2
-                  rounded-full
-                "
+                className="h-2 w-2 rounded-full"
                 style={{
                   background: TEAL,
-
-                  boxShadow:
-                    `0 0 12px ${TEAL}`,
+                  boxShadow: `0 0 12px ${TEAL}`,
                 }}
               />
-
               Secure authentication
             </div>
           </div>
@@ -692,76 +522,57 @@ const handleSubmit = async (e) => {
 
           <div
             className="
-              p-5
-              sm:p-8
-              md:p-12
-              lg:p-14
               flex
               items-center
+              px-5
+              py-8
+              sm:px-9
+              sm:py-10
+              md:px-12
+              md:py-12
+              lg:px-12
+              lg:py-14
+              xl:px-14
             "
           >
-            <div
-              className="
-                w-full
-                max-w-md
-                mx-auto
-              "
-            >
+            <div className="mx-auto w-full max-w-md">
+
               {/* MOBILE LOGO */}
 
               <div
                 className="
-                  lg:hidden
+                  mb-8
                   flex
                   items-center
                   justify-center
                   gap-3
-                  mb-8
+                  lg:hidden
                 "
               >
                 <div
                   className="
-                    w-12
-                    h-12
-                    rounded-2xl
                     flex
+                    h-12
+                    w-12
                     items-center
                     justify-center
+                    rounded-2xl
                   "
                   style={{
                     background: BASE,
-
-                    boxShadow:
-                      "7px 7px 14px #0f141a,-7px -7px 14px #2a3543",
+                    boxShadow: softShadow,
+                    border: "1px solid rgba(255,255,255,0.035)",
                   }}
                 >
-                  <Music2
-                    size={23}
-                    style={{
-                      color: PURPLE,
-                    }}
-                  />
+                  <Music2 size={23} style={{ color: PURPLE }} />
                 </div>
 
                 <div>
-                  <p
-                    className="
-                      text-lg
-                      font-black
-                      tracking-[0.15em]
-                      text-white
-                    "
-                  >
-                    JOY MUSIC
+                  <p className="text-lg font-black tracking-[0.15em] text-white">
+                   LYRICS WAYYY
                   </p>
 
-                  <p
-                    className="
-                      text-[10px]
-                      tracking-[0.2em]
-                      text-gray-500
-                    "
-                  >
+                  <p className="text-[10px] tracking-[0.2em] text-gray-500">
                     YOUR MUSIC SPACE
                   </p>
                 </div>
@@ -772,49 +583,29 @@ const handleSubmit = async (e) => {
               <div className="mb-8">
                 <div
                   className="
-                    w-12
-                    h-12
-                    rounded-2xl
+                    mb-5
                     flex
+                    h-12
+                    w-12
                     items-center
                     justify-center
-                    mb-5
+                    rounded-2xl
                   "
                   style={{
                     background: BASE,
-
-                    boxShadow:
-                      "inset 5px 5px 10px #0f141a,inset -5px -5px 10px #2a3543",
+                    boxShadow: insetShadow,
+                    border: "1px solid rgba(255,255,255,0.025)",
                   }}
                 >
-                  <LockKeyhole
-                    size={21}
-                    style={{
-                      color: PURPLE,
-                    }}
-                  />
+                  <LockKeyhole size={21} style={{ color: PURPLE }} />
                 </div>
 
-                <h2
-                  className="
-                    text-3xl
-                    md:text-4xl
-                    font-black
-                    text-white
-                  "
-                >
+                <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
                   Welcome back
                 </h2>
 
-                <p
-                  className="
-                    text-sm
-                    text-gray-500
-                    mt-2
-                  "
-                >
-                  Sign in to continue to
-                  your account.
+                <p className="mt-2 text-sm leading-6 text-gray-500">
+                  Sign in to continue to your account.
                 </p>
               </div>
 
@@ -824,48 +615,23 @@ const handleSubmit = async (e) => {
                 <div
                   className="
                     mb-5
-                    rounded-2xl
-                    p-4
                     flex
                     items-start
                     gap-3
+                    rounded-2xl
+                    p-4
                   "
                   style={{
                     background: BASE,
-
-                    boxShadow:
-                      "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+                    boxShadow: insetShadow,
+                    border: "1px solid rgba(248,113,113,0.12)",
                   }}
                 >
-                  <div
-                    className="
-                      w-8
-                      h-8
-                      rounded-lg
-                      flex
-                      items-center
-                      justify-center
-                      shrink-0
-                    "
-                    style={{
-                      background:
-                        "rgba(239,68,68,0.08)",
-                    }}
-                  >
-                    <AlertCircle
-                      size={17}
-                      className="text-red-400"
-                    />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500/10">
+                    <AlertCircle size={17} className="text-red-400" />
                   </div>
 
-                  <p
-                    className="
-                      text-xs
-                      leading-5
-                      text-red-300
-                      pt-1
-                    "
-                  >
+                  <p className="pt-1 text-xs leading-5 text-red-300">
                     {error}
                   </p>
                 </div>
@@ -877,34 +643,27 @@ const handleSubmit = async (e) => {
                 <div
                   className="
                     mb-5
-                    rounded-2xl
-                    p-4
                     flex
                     items-center
                     gap-3
+                    rounded-2xl
+                    p-4
                   "
                   style={{
                     background: BASE,
-
-                    boxShadow:
-                      "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+                    boxShadow: insetShadow,
+                    border: "1px solid rgba(43,212,196,0.15)",
                   }}
                 >
                   <CheckCircle2
                     size={18}
-                    style={{
-                      color: TEAL,
-                    }}
+                    className="shrink-0"
+                    style={{ color: TEAL }}
                   />
 
                   <p
-                    className="
-                      text-xs
-                      font-medium
-                    "
-                    style={{
-                      color: TEAL,
-                    }}
+                    className="text-xs font-medium leading-5"
+                    style={{ color: TEAL }}
                   >
                     {success}
                   </p>
@@ -913,213 +672,160 @@ const handleSubmit = async (e) => {
 
               {/* FORM */}
 
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-5"
-              >
+              <form onSubmit={handleSubmit} className="space-y-5">
+
                 {/* EMAIL */}
 
                 <div>
                   <label
-                    className="
-                      block
-                      text-xs
-                      font-semibold
-                      text-gray-400
-                      mb-2
-                      ml-1
-                    "
+                    htmlFor="signin-email"
+                    className="mb-2 ml-1 block text-xs font-semibold tracking-wide text-gray-400"
                   >
                     Email address
                   </label>
 
-                  <div
-                    className={`
-                      relative
-                      rounded-2xl
-                      transition-all
-                      duration-200
-                      ${insetShadow}
-                    `}
-                  >
+                  <div className="relative">
                     <Mail
                       size={18}
-                      className="
-                        absolute
-                        left-4
-                        top-1/2
-                        -translate-y-1/2
-                        pointer-events-none
-                      "
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2"
                       style={{
-                        color:
-                          formData.email
-                            ? PURPLE
-                            : "#68707d",
+                        color: formData.email ? PURPLE : "#68707d",
                       }}
                     />
 
                     <input
+                      id="signin-email"
                       type="email"
                       name="email"
-                      value={
-                        formData.email
-                      }
-                      onChange={
-                        handleChange
-                      }
+                      value={formData.email}
+                      onChange={handleChange}
                       placeholder="you@example.com"
                       autoComplete="email"
                       disabled={loading}
+                      required
                       className="
-                        w-full
                         h-14
+                        w-full
                         rounded-2xl
+                        border
+                        border-white/[0.025]
                         bg-transparent
                         pl-12
                         pr-4
-                        text-sm
-                        text-[#bab9b9]
-                        placeholder:text-gray-600
+                        text-base
+                        text-white
                         outline-none
+                        transition-all
+                        duration-200
+                        placeholder:text-gray-600
+                        focus:border-[#8c7cf7]/50
                         disabled:opacity-50
-                        
                       "
                       style={{
-                    background: BASE,
-
-                    boxShadow:
-                      "inset 5px 5px 10px #0f141a,inset -5px -5px 10px #2a3543",
-                  }}
+                        background: BASE,
+                        boxShadow: insetShadow,
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* PASSWORD */}
-  <div>
-  <label
-    className="
-      block
-      text-xs
-      font-semibold
-      text-gray-400
-      mb-2
-      ml-1
-    "
-  >
-<div className="flex justify-end">
-  <Link
-    to="/forgot-password"
-    className="text-sm font-medium text-[#2bd4c4] hover:text-[#8c7cf7]"
-  >
-    Forgot password?
-  </Link>
-</div>
-                    Password
-                  </label>
 
-                  <div
-                    className={`
-                      relative
-                      rounded-2xl
-                      transition-all
-                      duration-200
-                      
-                    `}
-                    
-                  >
+                <div>
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <label
+                      htmlFor="signin-password"
+                      className="text-xs font-semibold tracking-wide text-gray-400"
+                    >
+                      Password
+                    </label>
+
+                    <Link
+                      to="/forgot-password"
+                      className="
+                        text-xs
+                        font-semibold
+                        transition-colors
+                        hover:text-[#8c7cf7]
+                      "
+                      style={{ color: TEAL }}
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+
+                  <div className="relative">
                     <LockKeyhole
                       size={18}
-                      className="
-                        absolute
-                        left-4
-                        top-1/2
-                        -translate-y-1/2
-                        pointer-events-none
-                      "
+                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2"
                       style={{
-                        color:
-                          formData.password
-                            ? PURPLE
-                            : "#68707d",
+                        color: formData.password ? PURPLE : "#68707d",
                       }}
                     />
 
                     <input
-                      type={
-                        showPassword
-                          ? "text"
-                          : "password"
-                      }
+                      id="signin-password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
-                      value={
-                        formData.password
-                      }
-                      onChange={
-                        handleChange
-                      }
+                      value={formData.password}
+                      onChange={handleChange}
                       placeholder="Enter your password"
                       autoComplete="current-password"
                       disabled={loading}
+                      required
                       className="
-                        w-full
                         h-14
+                        w-full
                         rounded-2xl
+                        border
+                        border-white/[0.025]
                         bg-transparent
                         pl-12
-                        pr-12
-                        text-sm
+                        pr-14
+                        text-base
                         text-white
-                        placeholder:text-gray-600
                         outline-none
+                        transition-all
+                        duration-200
+                        placeholder:text-gray-600
+                        focus:border-[#8c7cf7]/50
                         disabled:opacity-50
                       "
                       style={{
-                    background: BASE,
-
-                    boxShadow:
-                      "inset 5px 5px 10px #0f141a,inset -5px -5px 10px #2a3543",
-                  }}
+                        background: BASE,
+                        boxShadow: insetShadow,
+                      }}
                     />
 
                     <button
                       type="button"
                       onClick={() =>
-                        setShowPassword(
-                          (prev) =>
-                            !prev
-                        )
+                        setShowPassword((prev) => !prev)
                       }
                       disabled={loading}
                       aria-label={
-                        showPassword
-                          ? "Hide password"
-                          : "Show password"
+                        showPassword ? "Hide password" : "Show password"
                       }
                       className="
                         absolute
-                        right-4
+                        right-3
                         top-1/2
-                        -translate-y-1/2
-                        w-9
-                        h-9
-                        rounded-xl
                         flex
+                        h-10
+                        w-10
+                        -translate-y-1/2
                         items-center
                         justify-center
+                        rounded-xl
                         text-gray-500
-                        hover:text-gray-200
                         transition-colors
+                        hover:text-white
                       "
                     >
                       {showPassword ? (
-                        <EyeOff
-                          size={18}
-                        />
+                        <EyeOff size={18} />
                       ) : (
-                        <Eye
-                          size={18}
-                        />
+                        <Eye size={18} />
                       )}
                     </button>
                   </div>
@@ -1127,102 +833,81 @@ const handleSubmit = async (e) => {
 
                 {/* LOGIN BUTTON */}
 
-               <button
-  type="submit"
-  disabled={loading}
-  className="
-    relative
-    group
-    overflow-hidden
-    w-full
-    h-13
-    rounded-2xl
-    flex
-    items-center
-    justify-center
-    gap-2
-    text-sm
-    font-semibold
-    text-white
-    transition-all
-    duration-200
-    hover:brightness-110
-    active:scale-[0.98]
-  "
-  style={{
-    background: "#8c7cf7",
-    boxShadow: "7px 7px 14px #0f141a, -7px -7px 14px #2a3543",
-  }}
->
-  {/* Hover effect — must not intercept clicks */}
-  <span
-    className="
-      pointer-events-none
-      absolute
-      inset-0
-      opacity-0
-      group-hover:opacity-100
-      transition-opacity
-    "
-    style={{
-      background:
-        "linear-gradient(90deg, rgba(255,255,255,0.10), transparent, rgba(255,255,255,0.10))",
-    }}
-  />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="
+                    group
+                    relative
+                    flex
+                    h-14
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    overflow-hidden
+                    rounded-2xl
+                    text-sm
+                    font-bold
+                    tracking-wide
+                    text-white
+                    transition-all
+                    duration-200
+                    hover:brightness-110
+                    active:scale-[0.98]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
+                  style={{
+                    background: `linear-gradient(110deg, ${PURPLE}, #7465e9 55%, #6559d5)`,
+                    boxShadow: `0 8px 22px rgba(140,124,247,0.17), 5px 5px 12px ${DARK}`,
+                  }}
+                >
+                  <span
+                    className="
+                      pointer-events-none
+                      absolute
+                      inset-0
+                      opacity-0
+                      transition-opacity
+                      duration-300
+                      group-hover:opacity-100
+                    "
+                    style={{
+                      background:
+                        "linear-gradient(110deg, rgba(255,255,255,0.16), transparent 55%)",
+                    }}
+                  />
 
-  {/* Centered button content */}
-  <span className="relative z-10 flex items-center justify-center gap-2">
-    {loading ? (
-      <>
-        <Loader2 className="w-4 h-4 animate-spin" />
-        Signing in...
-      </>
-    ) : (
-      <>
-        Sign in
-        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-      </>
-    )}
-  </span>
-</button>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {loading ? (
+                      <>
+                        <Loader2 size={17} className="animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        Sign in
+                        <ArrowRight
+                          size={17}
+                          className="transition-transform duration-200 group-hover:translate-x-1"
+                        />
+                      </>
+                    )}
+                  </span>
+                </button>
               </form>
 
               {/* DIVIDER */}
 
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-4
-                  my-7
-                "
-              >
-                <div
-                  className="
-                    h-px
-                    flex-1
-                    bg-[#303641]
-                  "
-                />
+              <div className="my-7 flex items-center gap-4">
+                <div className="h-px flex-1 bg-[#343a45]" />
 
-                <span
-                  className="
-                    text-[10px]
-                    uppercase
-                    tracking-[0.2em]
-                    text-gray-600
-                  "
-                >
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-600">
                   New here?
                 </span>
 
-                <div
-                  className="
-                    h-px
-                    flex-1
-                    bg-[#303641]
-                  "
-                />
+                <div className="h-px flex-1 bg-[#343a45]" />
               </div>
 
               {/* SIGN UP */}
@@ -1230,13 +915,15 @@ const handleSubmit = async (e) => {
               <Link
                 to="/signup"
                 className="
-                  w-full
-                  h-13
-                  rounded-2xl
                   flex
+                  h-14
+                  w-full
                   items-center
                   justify-center
                   gap-2
+                  rounded-2xl
+                  border
+                  border-white/[0.025]
                   text-sm
                   font-semibold
                   text-gray-300
@@ -1247,42 +934,19 @@ const handleSubmit = async (e) => {
                 "
                 style={{
                   background: BASE,
-
-                  boxShadow:
-                    "7px 7px 14px #0f141a,-7px -7px 14px #2a3543",
+                  boxShadow: softShadow,
                 }}
               >
-                <UserRound
-                  size={17}
-                />
-
+                <UserRound size={17} />
                 Create an account
               </Link>
 
               {/* SECURITY */}
 
-              <div
-                className="
-                  flex
-                  items-center
-                  justify-center
-                  gap-2
-                  mt-7
-                "
-              >
-                <ShieldCheck
-                  size={14}
-                  style={{
-                    color: TEAL,
-                  }}
-                />
+              <div className="mt-7 flex items-center justify-center gap-2">
+                <ShieldCheck size={14} style={{ color: TEAL }} />
 
-                <span
-                  className="
-                    text-[10px]
-                    text-gray-600
-                  "
-                >
+                <span className="text-[10px] tracking-wide text-gray-500">
                   Protected account access
                 </span>
               </div>
@@ -1293,24 +957,9 @@ const handleSubmit = async (e) => {
 
       {/* FOOTER */}
 
-      <div
-        className="
-          absolute
-          bottom-3
-          left-0
-          right-0
-          text-center
-          pointer-events-none
-        "
-      >
-        <p
-          className="
-            text-[10px]
-            text-gray-700
-            tracking-wider
-          "
-        >
-          © {new Date().getFullYear()} JOY MUSIC
+      <div className="relative z-10 mt-6 text-center">
+        <p className="text-[10px] tracking-[0.15em] text-gray-600">
+          © {new Date().getFullYear()} LYRICS WAYYY
         </p>
       </div>
     </div>
@@ -1321,67 +970,30 @@ const handleSubmit = async (e) => {
 // FEATURE CARD
 // =====================================================
 
-const FeatureCard = ({
-  icon: Icon,
-  title,
-  text,
-  color,
-}) => {
+const FeatureCard = ({ icon: Icon, title, text, color }) => {
   return (
     <div
-      className="
-        rounded-2xl
-        p-4
-      "
+      className="rounded-2xl border border-white/[0.025] p-4"
       style={{
         background: BASE,
-
-        boxShadow:
-          "inset 4px 4px 8px #0f141a,inset -4px -4px 8px #2a3543",
+        boxShadow: insetShadow,
       }}
     >
       <div
-        className="
-          w-9
-          h-9
-          rounded-xl
-          flex
-          items-center
-          justify-center
-          mb-3
-        "
+        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl"
         style={{
           background: BASE,
-
-          boxShadow:
-            "5px 5px 10px #0f141a,-5px -5px 10px #2a3543",
+          boxShadow: softShadow,
         }}
       >
-        <Icon
-          size={16}
-          style={{
-            color,
-          }}
-        />
+        <Icon size={16} style={{ color }} />
       </div>
 
-      <p
-        className="
-          text-xs
-          font-bold
-          text-gray-200
-        "
-      >
+      <p className="text-xs font-bold text-gray-200">
         {title}
       </p>
 
-      <p
-        className="
-          text-[10px]
-          text-gray-600
-          mt-1
-        "
-      >
+      <p className="mt-1 text-[10px] text-gray-500">
         {text}
       </p>
     </div>
@@ -1392,34 +1004,25 @@ const FeatureCard = ({
 // FLOATING ORB
 // =====================================================
 
-const FloatingOrb = ({
-  icon: Icon,
-  color,
-}) => {
+const FloatingOrb = ({ icon: Icon, color }) => {
   return (
     <div
       className="
-        w-16
-        h-16
-        rounded-full
         flex
+        h-16
+        w-16
+        animate-pulse
         items-center
         justify-center
-        animate-pulse
+        rounded-full
       "
       style={{
         background: BASE,
-
-        boxShadow:
-          "10px 10px 20px #0f141a,-10px -10px 20px #2a3543",
+        boxShadow: softShadow,
+        border: "1px solid rgba(255,255,255,0.035)",
       }}
     >
-      <Icon
-        size={22}
-        style={{
-          color,
-        }}
-      />
+      <Icon size={22} style={{ color }} />
     </div>
   );
 };

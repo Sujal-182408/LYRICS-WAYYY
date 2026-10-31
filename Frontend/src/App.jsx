@@ -321,6 +321,7 @@ const MainLayout = ({ children }) => (
   </div>
 );
 
+
 // =====================================================
 // GLOBAL PERSISTENT MUSIC PLAYER
 // =====================================================
@@ -328,30 +329,36 @@ const MainLayout = ({ children }) => (
 const PersistentMusicPlayer = () => {
   const { pathname } = useLocation();
 
-  const isAuthenticationPage = pathname === "/signin" || pathname === "/signup";
+  // Authentication and password recovery pages
+  const isAuthenticationPage = [
+    "/signin",
+    "/signup",
+    "/forgot-password",
+  ].includes(pathname) || pathname.startsWith("/reset-password/");
 
+  // Artist dashboard pages
   const isArtistDashboard =
     pathname === "/artist" || pathname.startsWith("/artist/");
 
+  // Super Admin pages
   const isSuperAdminPage =
     pathname === "/superadmin" || pathname.startsWith("/superadmin/");
 
   const shouldHidePlayer =
     isAuthenticationPage || isArtistDashboard || isSuperAdminPage;
 
+  if (shouldHidePlayer) {
+    return null;
+  }
+
   return (
-    <div
-      id="global-music-player"
-      style={{
-        display: shouldHidePlayer ? "none" : "block",
-      }}
-      aria-hidden={shouldHidePlayer}
-    >
+    <div id="global-music-player">
       <MusicPlayer />
-      
     </div>
   );
 };
+
+
 
 // =====================================================
 // APP
