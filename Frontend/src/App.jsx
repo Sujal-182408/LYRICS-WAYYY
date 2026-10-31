@@ -28,6 +28,14 @@ import { BASE_URL } from "./config/api";
 import Signin from "./assets/layout/Signin";
 import Signup from "./assets/layout/Signup";
 
+const ForgotPassword = lazy(
+  () => import("./assets/layout/ForgotPassword")
+);
+
+const ResetPassword = lazy(
+  () => import("./assets/layout/ResetPassword")
+);
+
 // =====================================================
 // GLOBAL FLOATING BACK BUTTON — LAZY LOADED
 // =====================================================
@@ -473,9 +481,19 @@ const App = () => {
               AUTHENTICATION
           =========================================== */}
 
-          <Route path="/signin" element={<Signin />} />
+         <Route path="/signin" element={<Signin />} />
+<Route path="/signup" element={<Signup />} />
 
-          <Route path="/signup" element={<Signup />} />
+{/* Password Recovery */}
+<Route
+  path="/forgot-password"
+  element={<ForgotPassword />}
+/>
+
+<Route
+  path="/reset-password/:token"
+  element={<ResetPassword />}
+/>
 
           {/* ===========================================
               PUBLIC INFORMATION PAGES

@@ -263,6 +263,15 @@ import externalMusicRoutes from "./routes/externalMusicRoutes.js";
 
 app.use("/api/auth", authRoutes);
 
+app.get("/api/auth/route-check", (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Auth router is mounted successfully.",
+    path: req.originalUrl,
+    environment: process.env.NODE_ENV,
+  });
+});
+
 if (process.env.NODE_ENV !== "production") {
   app.get("/api/auth/route-check", (req, res) => {
     return res.status(200).json({
@@ -285,6 +294,8 @@ if (process.env.NODE_ENV !== "production") {
 if (process.env.NODE_ENV !== "production") {
   console.log("🔐 AUTH ROUTES LOADED");
 }
+
+
 
 // =====================================================
 // SONG ROUTES

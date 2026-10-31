@@ -2,6 +2,8 @@ import ArtistApplication from "../models/ArtistApplication.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 // =====================================================
 // CONFIG
@@ -21,6 +23,15 @@ const JWT_ISSUER =
 const JWT_AUDIENCE =
   process.env.JWT_AUDIENCE ||
   "lyrics-wayyy-users";
+
+
+  const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_APP_PASSWORD,
+  },
+});
 
 // =====================================================
 // SECURITY CONFIG

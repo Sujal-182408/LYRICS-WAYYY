@@ -996,18 +996,25 @@ const handleSubmit = async (e) => {
                 </div>
 
                 {/* PASSWORD */}
-
-                <div>
-                  <label
-                    className="
-                      block
-                      text-xs
-                      font-semibold
-                      text-gray-400
-                      mb-2
-                      ml-1
-                    "
-                  >
+  <div>
+  <label
+    className="
+      block
+      text-xs
+      font-semibold
+      text-gray-400
+      mb-2
+      ml-1
+    "
+  >
+<div className="flex justify-end">
+  <Link
+    to="/forgot-password"
+    className="text-sm font-medium text-[#2bd4c4] hover:text-[#8c7cf7]"
+  >
+    Forgot password?
+  </Link>
+</div>
                     Password
                   </label>
 

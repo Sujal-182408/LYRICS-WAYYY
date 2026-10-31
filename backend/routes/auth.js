@@ -9,6 +9,10 @@ import {
   changePassword,
 } from "../controllers/authController.js";
 
+import {
+  forgotPassword,
+  resetPassword,
+} from "../controllers/passwordResetController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import uploadProfile from "../middleware/uploadProfile.js";
 
@@ -61,6 +65,17 @@ const passwordLimiter = rateLimit({
   },
 });
 
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many password reset requests. Please try again later.",
+  },
+});
+
 // =====================================================
 // PUBLIC AUTH
 // =====================================================
@@ -87,6 +102,25 @@ router.post(
   },
   login
 );
+
+// =====================================================
+// FORGOT PASSWORD / RESET PASSWORD
+// =====================================================
+
+// POST /api/auth/forgot-password
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter,
+  forgotPassword
+);
+
+// POST /api/auth/reset-password
+router.post(
+  "/reset-password",
+  forgotPasswordLimiter,
+  resetPassword
+);
+
 // =====================================================
 // CURRENT USER
 // =====================================================

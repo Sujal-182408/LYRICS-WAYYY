@@ -206,6 +206,19 @@ passwordChangedAt: {
   default: null,
 },
 
+// PASSWORD RESET
+passwordResetToken: {
+  type: String,
+  default: undefined,
+  select: false,
+},
+
+passwordResetExpires: {
+  type: Date,
+  default: undefined,
+  select: false,
+},
+
 // EMAIL VERIFICATION
 emailVerified: {
   type: Boolean,
