@@ -178,87 +178,87 @@ whiteBlack: {
   // 05. ORANGE + GOLD
   // =====================================================
 
-  orangeGold: {
-    id: "orangeGold",
-    name: "Orange Gold",
+ orangeGold: {
+  id: "orangeGold",
+  name: "Obsidian Champagne",
 
-    colors: {
-      background: "#1A1712",
-      surface: "#2A241C",
-      surfaceLight: "#3A3023",
+  colors: {
+    background: "#100D0A",
+    surface: "#1B1712",
+    surfaceLight: "#292219",
 
-      shadowDark: "#0E0B08",
-      shadowLight: "#3A3023",
+    shadowDark: "#080604",
+    shadowLight: "#382D20",
 
-      primary: "#F59E0B",
-      secondary: "#FBBF24",
+    primary: "#C6A46A",
+    secondary: "#E2C99A",
 
-      text: "#F5E8CC",
-      textMuted: "#A99A7D",
-      textDark: "#1A1712",
+    text: "#F3EBDD",
+    textMuted: "#A99B85",
+    textDark: "#100D0A",
 
-      border: "rgba(255,255,255,0.04)",
+    border: "rgba(198,164,106,0.14)",
 
-      hover: "#453822",
-      active: "#4D3E26",
+    hover: "#33291D",
+    active: "#403322",
 
-      success: "#65D6A0",
-      danger: "#FF6B6B",
-      warning: "#FBBF24",
-      info: "#72A7FF",
+    success: "#829F82",
+    danger: "#C87568",
+    warning: "#D6B36F",
+    info: "#8298A8",
 
-      overlay: "rgba(14,11,8,0.72)",
+    overlay: "rgba(8,6,4,0.85)",
 
-      glowPrimary: "rgba(245,158,11,0.35)",
-      glowSecondary: "rgba(251,191,36,0.30)",
+    glowPrimary: "rgba(198,164,106,0.22)",
+    glowSecondary: "rgba(226,201,154,0.12)",
 
-      gradient:
-        "linear-gradient(135deg, #FDE68A 0%, #FBBF24 45%, #F97316 100%)",
-    },
+    gradient:
+      "linear-gradient(135deg, #F0D9A8 0%, #C6A46A 48%, #80603A 100%)",
   },
+},
 
   // =====================================================
   // 06. PINK + PURPLE
   // =====================================================
 
-  pinkPurple: {
-    id: "pinkPurple",
-    name: "Pink Purple",
+pinkPurple: {
+  id: "pinkPurple",
+  name: "Neon Vinyl",
 
-    colors: {
-      background: "#18131C",
-      surface: "#29202F",
-      surfaceLight: "#392B42",
+  colors: {
+    background: "#0B0912",
+    surface: "#151020",
+    surfaceLight: "#211832",
 
-      shadowDark: "#0D090F",
-      shadowLight: "#392B42",
+    shadowDark: "#05030A",
+    shadowLight: "#302342",
 
-      primary: "#E879F9",
-      secondary: "#A78BFA",
+    primary: "#D946EF",
+    secondary: "#8B5CF6",
 
-      text: "#F0DDF5",
-      textMuted: "#A28FA9",
-      textDark: "#18131C",
+    text: "#F8F0FF",
+    textMuted: "#A69AB8",
+    textDark: "#0B0912",
 
-      border: "rgba(255,255,255,0.04)",
+    border: "rgba(217,70,239,0.12)",
 
-      hover: "#45334E",
-      active: "#4D3858",
+    hover: "#2C1D3D",
+    active: "#39234F",
 
-      success: "#67E8B0",
-      danger: "#FF6B81",
-      warning: "#FBBF24",
-      info: "#8B9FFF",
+    success: "#55D6A0",
+    danger: "#F16D91",
+    warning: "#F5BC62",
+    info: "#7C9EFF",
 
-      overlay: "rgba(13,9,15,0.72)",
+    overlay: "rgba(5,3,10,0.88)",
 
-      glowPrimary: "rgba(232,121,249,0.35)",
-      glowSecondary: "rgba(167,139,250,0.30)",
+    glowPrimary: "rgba(217,70,239,0.25)",
+    glowSecondary: "rgba(139,92,246,0.24)",
 
-      gradient:
-        "linear-gradient(135deg, #F0ABFC 0%, #E879F9 45%, #8B5CF6 100%)",
-    },
+    gradient:
+      "linear-gradient(135deg, #F0ABFC 0%, #D946EF 40%, #8B5CF6 75%, #5532A8 100%)",
   },
+},
 
   // =====================================================
   // 07. CYAN + BLUE
@@ -307,44 +307,44 @@ whiteBlack: {
   // 08. VIOLET + BLUE
   // =====================================================
 
-  violetBlue: {
-    id: "violetBlue",
-    name: "Violet Blue",
+violetBlue: {
+  id: "violetBlue",
+  name: "Sonic Sapphire",
 
-    colors: {
-      background: "#13151D",
-      surface: "#222638",
-      surfaceLight: "#2D3248",
+  colors: {
+    background: "#090E19",
+    surface: "#131C2D",
+    surfaceLight: "#1E2B42",
 
-      shadowDark: "#090A10",
-      shadowLight: "#2D3248",
+    shadowDark: "#050811",
+    shadowLight: "#293A55",
 
-      primary: "#7C83FD",
-      secondary: "#6366F1",
+    primary: "#648CFF",
+    secondary: "#9B8AFF",
 
-      text: "#E0E2F7",
-      textMuted: "#8D91A8",
-      textDark: "#13151D",
+    text: "#EAF0FF",
+    textMuted: "#929FB9",
+    textDark: "#090E19",
 
-      border: "rgba(255,255,255,0.04)",
+    border: "rgba(100,140,255,0.13)",
 
-      hover: "#343A55",
-      active: "#3B4260",
+    hover: "#263653",
+    active: "#30446A",
 
-      success: "#61D9A0",
-      danger: "#FF6B6B",
-      warning: "#FBBF24",
-      info: "#7C9CFF",
+    success: "#55D6A0",
+    danger: "#F07883",
+    warning: "#E9BB69",
+    info: "#65B9F5",
 
-      overlay: "rgba(9,10,16,0.72)",
+    overlay: "rgba(5,8,17,0.88)",
 
-      glowPrimary: "rgba(124,131,253,0.35)",
-      glowSecondary: "rgba(99,102,241,0.30)",
+    glowPrimary: "rgba(100,140,255,0.26)",
+    glowSecondary: "rgba(155,138,255,0.20)",
 
-      gradient:
-        "linear-gradient(135deg, #A5B4FC 0%, #6366F1 50%, #4338CA 100%)",
-    },
+    gradient:
+      "linear-gradient(135deg, #B5C8FF 0%, #648CFF 42%, #7659D9 75%, #40358C 100%)",
   },
+},
 
   // =====================================================
   // 09. LIME DARK
