@@ -617,9 +617,6 @@ const SleepTimerMenu = ({ active, display, onStart, onCancel, onClose }) => {
    MUSIC PLAYER
 ========================================================= */
 
-
-
-
 export default function MusicPlayer() {
   const {
     currentSong,
@@ -628,7 +625,6 @@ export default function MusicPlayer() {
     muted,
     shuffle,
     repeat,
-
     togglePlay,
     nextSong,
     previousSong,
@@ -651,6 +647,7 @@ export default function MusicPlayer() {
 
   // Playback time lives in a separate context to keep frequent progress updates lightweight.
   const playbackProgress = usePlaybackProgress();
+
   // Audio metadata may temporarily be NaN/Infinity while a track loads. Never
   // pass those values to controlled inputs or progress calculations.
   const currentTime = Number.isFinite(Number(playbackProgress?.currentTime))
@@ -687,9 +684,10 @@ export default function MusicPlayer() {
               : Array.isArray(payload?.results)
                 ? payload.results
                 : [];
-        const candidate =
-          list.find((song) => song?._id && song?.audioFile) ||
-          list.find((song) => song?._id);
+        const candidate = list.find(
+          (song) =>
+            song?._id && (song?.audioFile || song?.audioUrl || song?.audio),
+        );
         if (candidate && !controller.signal.aborted)
           setSuggestedSong(candidate);
       } catch (error) {
@@ -745,11 +743,10 @@ export default function MusicPlayer() {
   useEffect(() => {
     if (currentSong?._id) {
       setIsOpen(true);
-      // Keep the player minimized on track changes. Artwork is shown for every
-      // track; no YouTube video/iframe is rendered in this player.
+      // Keep the player minimized on track changes.
       setIsMinimized(true);
     }
-  }, [currentSong?._id, currentSong?.youtubeVideoId]);
+  }, [currentSong?._id]);
 
   /* =======================================================
      FAVORITE SYNC
@@ -759,7 +756,7 @@ export default function MusicPlayer() {
     let cancelled = false;
 
     const loadFavoriteState = async () => {
-      if (!currentSong?._id || currentSong?.youtubeVideoId) {
+      if (!currentSong?._id) {
         setLiked(false);
         return;
       }
@@ -801,7 +798,7 @@ export default function MusicPlayer() {
 
   const handleToggleFavorite = async () => {
     const songId = displaySong?._id;
-    if (!songId || displaySong?.youtubeVideoId || favoriteLoading) return;
+    if (!songId || favoriteLoading) return;
 
     const nextLiked = !liked;
     setLiked(nextLiked);
@@ -930,121 +927,149 @@ export default function MusicPlayer() {
 
   if (isMinimized) {
     return (
-      <>
-        <motion.div
-          initial={{
-            opacity: 0,
-            y: 30,
-            scale: 0.95,
+      <motion.div
+        initial={{
+          opacity: 0,
+          y: 30,
+          scale: 0.95,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          scale: 1,
+        }}
+        className="fixed bottom-23 left-3 right-3 sm:left-auto sm:right-6 z-9998 sm:w-107.5"
+      >
+        <div
+          className="relative overflow-hidden rounded-[1.8rem] p-3"
+          style={{
+            background: "var(--theme-surface)",
+            boxShadow:
+              "12px 12px 28px var(--theme-shadowDark), -12px -12px 28px var(--theme-shadowLight)",
+            border: "1px solid var(--theme-border)",
           }}
-          animate={{
-            opacity: 1,
-            y: 0,
-            scale: 1,
-          }}
-          className="fixed bottom-23 left-4 right-4 sm:left-auto sm:right-6 z-9998 sm:w-107.5"
         >
+          {/* Theme-colored background accents */}
           <div
-            className="relative overflow-hidden rounded-[1.8rem] p-3"
+            className="absolute inset-0 pointer-events-none"
             style={{
-              background: "var(--theme-surface)",
-              boxShadow:
-                "12px 12px 28px var(--theme-shadowDark), -12px -12px 28px var(--theme-shadowLight)",
-              border: "1px solid var(--theme-border)",
+              background:
+                "radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--theme-primary) 12%, transparent), transparent 50%), radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--theme-secondary) 10%, transparent), transparent 45%)",
             }}
-          >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--theme-primary) 12%, transparent), transparent 50%), radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--theme-secondary) 10%, transparent), transparent 45%)",
-              }}
-            />
+          />
 
-            <div className="relative flex items-center gap-3">
-              {/* Compact controls stay available for local and YouTube tracks. */}
+          <div className="relative flex items-center gap-2 sm:gap-3">
+            {/* Album artwork */}
+            <div className="shrink-0">
               <AlbumArtwork song={displaySong} playing={playing} size="small" />
+            </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h4
-                    className="font-semibold text-sm truncate"
-                    style={{
-                      color: "var(--theme-text)",
-                    }}
-                  >
-                    {displaySong.title}
-                  </h4>
-
-                  {playing && <Visualizer playing={playing} compact />}
-                </div>
-
-                <p
-                  className="text-xs truncate mt-0.5"
+            {/* Track information and progress */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <h4
+                  className="min-w-0 flex-1 font-semibold text-sm truncate"
                   style={{
-                    color: "var(--theme-textMuted)",
+                    color: "var(--theme-text)",
                   }}
+                  title={displaySong?.title || "Unknown track"}
                 >
-                  {artistName}
-                </p>
+                  {displaySong?.title || "Unknown track"}
+                </h4>
 
-                <div
-                  className="mt-2 h-1 rounded-full overflow-hidden"
-                  style={{
-                    background: "var(--theme-background)",
-                    boxShadow: "inset 2px 2px 4px var(--theme-shadowDark)",
-                  }}
-                >
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: "100%",
-                      transform: `scaleX(${progress / 100})`,
-                      transformOrigin: "left center",
-                      background: "var(--theme-gradient)",
-                      willChange: "transform",
-                    }}
-                  />
-                </div>
+                {playing && (
+                  <div className="shrink-0">
+                    <Visualizer playing={playing} compact />
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-1">
-                <ControlButton
-                  size="small"
-                  onClick={previousSong}
-                  title="Previous"
-                >
-                  <SkipBack size={16} />
-                </ControlButton>
+              <p
+                className="text-xs truncate mt-0.5"
+                style={{
+                  color: "var(--theme-textMuted)",
+                }}
+                title={artistName || "Unknown artist"}
+              >
+                {artistName || "Unknown artist"}
+              </p>
 
-                <ControlButton
-                  size="small"
-                  onClick={handlePlayerToggle}
-                  title={playing ? "Pause" : "Play"}
-                >
-                  {playing ? (
-                    <Pause size={16} />
-                  ) : (
-                    <Play size={16} fill="currentColor" />
-                  )}
-                </ControlButton>
-
-                <ControlButton size="small" onClick={nextSong} title="Next">
-                  <SkipForward size={16} />
-                </ControlButton>
-
-                <ControlButton
-                  size="small"
-                  onClick={() => setIsMinimized(false)}
-                  title="Expand"
-                >
-                  <Maximize2 size={15} />
-                </ControlButton>
+              {/* Playback progress */}
+              <div
+                className="mt-2 h-1 rounded-full overflow-hidden"
+                style={{
+                  background: "var(--theme-background)",
+                  boxShadow: "inset 2px 2px 4px var(--theme-shadowDark)",
+                }}
+                role="progressbar"
+                aria-label="Song progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(
+                  Math.min(100, Math.max(0, Number(progress) || 0)),
+                )}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: "100%",
+                    transform: `scaleX(${
+                      Math.min(100, Math.max(0, Number(progress) || 0)) / 100
+                    })`,
+                    transformOrigin: "left center",
+                    background: "var(--theme-gradient)",
+                    willChange: "transform",
+                    transition: "transform 150ms linear",
+                  }}
+                />
               </div>
             </div>
+
+            {/* Playback controls */}
+            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+              <ControlButton
+                size="small"
+                onClick={previousSong}
+                title="Previous"
+                aria-label="Previous song"
+              >
+                <SkipBack size={16} />
+              </ControlButton>
+
+              <ControlButton
+                size="small"
+                onClick={handlePlayerToggle}
+                title={playing ? "Pause" : "Play"}
+                aria-label={playing ? "Pause song" : "Play song"}
+              >
+                {playing ? (
+                  <Pause size={16} />
+                ) : (
+                  <Play size={16} fill="currentColor" />
+                )}
+              </ControlButton>
+
+              <ControlButton
+                size="small"
+                onClick={nextSong}
+                title="Next"
+                aria-label="Next song"
+              >
+                <SkipForward size={16} />
+              </ControlButton>
+
+              <ControlButton
+                size="small"
+                onClick={() => setIsMinimized(false)}
+                title="Expand"
+                aria-label="Expand music player"
+              >
+                <Maximize2 size={15} />
+              </ControlButton>
+            </div>
           </div>
-        </motion.div>
-      </>
+        </div>
+      </motion.div>
     );
   }
 
@@ -1179,49 +1204,57 @@ export default function MusicPlayer() {
                 ============================================ */}
 
                 <div className="flex min-w-0 flex-col items-center justify-center gap-4">
-                  <AlbumArtwork song={displaySong} playing={playing} size="large" />
+                  {/* Album artwork */}
+                  <AlbumArtwork
+                    song={displaySong}
+                    playing={playing}
+                    size="large"
+                  />
 
-                  <div className="text-center mt-5 max-w-[300px]">
+                  {/* Track information */}
+                  <div className="mt-5 w-full max-w-75 min-w-0 text-center">
                     <h2
-                      className="font-bold text-xl sm:text-2xl truncate"
+                      className="truncate text-xl font-bold sm:text-2xl"
                       style={{
                         color: "var(--theme-text)",
                       }}
-                      title={displaySong.title}
+                      title={displaySong?.title || "Unknown track"}
                     >
-                      {displaySong.title}
+                      {displaySong?.title || "Unknown track"}
                     </h2>
 
                     <p
-                      className="mt-1 text-sm truncate"
+                      className="mt-1 truncate text-sm"
                       style={{
                         color: "var(--theme-textMuted)",
                       }}
+                      title={artistName || "Unknown artist"}
                     >
-                      {artistName}
+                      {artistName || "Unknown artist"}
                     </p>
 
                     <p
-                      className="text-xs mt-1 truncate"
+                      className="mt-1 truncate text-xs"
                       style={{
                         color:
                           "color-mix(in srgb, var(--theme-textMuted) 65%, transparent)",
                       }}
+                      title={albumName || ""}
                     >
-                      {albumName}
+                      {albumName || ""}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-4">
+                  {/* Track actions */}
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                    {/* Favorite */}
                     <ControlButton
                       size="small"
                       onClick={handleToggleFavorite}
                       active={liked}
-                      disabled={favoriteLoading || Boolean(displaySong?.youtubeVideoId)}
+                      disabled={favoriteLoading}
                       title={
-                        displaySong?.youtubeVideoId
-                          ? "Favorites are available for library songs"
-                          : favoriteLoading
+                        favoriteLoading
                           ? "Updating favorite..."
                           : liked
                             ? "Remove from favorites"
@@ -1235,6 +1268,7 @@ export default function MusicPlayer() {
                       />
                     </ControlButton>
 
+                    {/* Share */}
                     <ControlButton
                       size="small"
                       onClick={handleShare}
@@ -1247,6 +1281,7 @@ export default function MusicPlayer() {
                       )}
                     </ControlButton>
 
+                    {/* Sleep timer */}
                     <ControlButton
                       size="small"
                       onClick={() => setShowSleepTimer(true)}
@@ -1256,11 +1291,11 @@ export default function MusicPlayer() {
                       <Moon size={16} />
                     </ControlButton>
 
-                    {!displaySong?.youtubeVideoId && (
-                      <AddToPlaylistButton song={displaySong} size="sm" />
-                    )}
+                    {/* Add to playlist */}
+                    <AddToPlaylistButton song={displaySong} size="sm" />
                   </div>
 
+                  {/* Share feedback */}
                   {shareMessage && (
                     <motion.span
                       initial={{
@@ -1271,10 +1306,12 @@ export default function MusicPlayer() {
                         opacity: 1,
                         y: 0,
                       }}
-                      className="text-[10px] mt-2"
+                      className="mt-2 text-center text-[10px]"
                       style={{
                         color: "var(--theme-secondary)",
                       }}
+                      role="status"
+                      aria-live="polite"
                     >
                       {shareMessage}
                     </motion.span>
@@ -1301,7 +1338,6 @@ export default function MusicPlayer() {
                       className="col-span-2 min-w-0 flex flex-col items-center justify-center pr-1.5 sm:pr-2 border-r"
                       style={{ borderColor: "var(--theme-border)" }}
                     >
-                     
                       <Visualizer playing={playing} compact />
                       <span
                         className="text-[7px] mt-0.5 text-center leading-none"
@@ -1312,38 +1348,73 @@ export default function MusicPlayer() {
                     </div>
 
                     <div className="col-span-3 min-w-0 flex flex-col justify-center pl-1 sm:pl-1.5">
-                      <div className="flex items-center gap-1 mb-0.5">
+                      {/* Lyrics heading */}
+                      <div className="flex items-center gap-1 mb-0.5 min-w-0">
                         <Music2
                           size={10}
-                          style={{ color: "var(--theme-primary)" }}
+                          className="shrink-0"
+                          style={{
+                            color: "var(--theme-primary)",
+                          }}
                         />
+
                         <span
-                          className="text-[8px] sm:text-[9px] uppercase tracking-[0.1em]"
-                          style={{ color: "var(--theme-textMuted)" }}
+                          className="text-[8px] sm:text-[9px] uppercase tracking-[0.1em] truncate"
+                          style={{
+                            color: "var(--theme-textMuted)",
+                          }}
                         >
                           Synced lyrics
                         </span>
                       </div>
+
                       {(() => {
-                        const lines = parseTimedLyrics(displaySong);
+                        const parsedLines = parseTimedLyrics(displaySong);
+                        const lines = Array.isArray(parsedLines)
+                          ? parsedLines
+                          : [];
+
+                        const safeCurrentTime = Number.isFinite(
+                          Number(currentTime),
+                        )
+                          ? Number(currentTime)
+                          : 0;
+
                         let activeIndex = -1;
+
                         for (let index = 0; index < lines.length; index += 1) {
-                          if (lines[index].time <= currentTime)
+                          const lineTime = Number(lines[index]?.time);
+
+                          if (!Number.isFinite(lineTime)) {
+                            continue;
+                          }
+
+                          if (lineTime <= safeCurrentTime) {
                             activeIndex = index;
-                          else break;
+                          } else {
+                            break;
+                          }
                         }
+
                         const previousLine =
-                          activeIndex > 0 ? lines[activeIndex - 1]?.text : "";
+                          activeIndex > 0
+                            ? lines[activeIndex - 1]?.text || ""
+                            : "";
+
                         const currentLine =
-                          activeIndex >= 0 ? lines[activeIndex]?.text : "";
+                          activeIndex >= 0
+                            ? lines[activeIndex]?.text || ""
+                            : "";
+
                         const hasLyrics = lines.length > 0;
+
                         return (
                           <div
                             className="min-w-0 space-y-0"
                             aria-live="polite"
                             aria-atomic="true"
                           >
-
+                            {/* Previous lyric line */}
                             <p
                               className="min-h-0 text-[9px] sm:text-[11px] leading-tight wrap-break-word line-clamp-1"
                               style={{
@@ -1354,6 +1425,8 @@ export default function MusicPlayer() {
                               {previousLine ||
                                 (hasLyrics ? "♪" : "Lyrics not available")}
                             </p>
+
+                            {/* Currently active lyric line */}
                             <p
                               className="min-h-0 text-[11px] sm:text-xs font-semibold leading-tight wrap-break-word line-clamp-2"
                               style={{
@@ -1374,23 +1447,36 @@ export default function MusicPlayer() {
                   </div>
 
                   {/* main controls */}
+
                   <div className="flex items-center justify-center gap-2 sm:gap-4">
+                    {/* Shuffle */}
                     <ControlButton
-                      onClick={() => setShuffle(!shuffle)}
+                      onClick={() => setShuffle((previous) => !previous)}
                       active={shuffle}
-                      title="Shuffle"
+                      title={shuffle ? "Disable shuffle" : "Enable shuffle"}
+                      aria-label={
+                        shuffle ? "Disable shuffle" : "Enable shuffle"
+                      }
                     >
                       <Shuffle size={18} />
                     </ControlButton>
 
-                    <ControlButton onClick={previousSong} title="Previous">
+                    {/* Previous track */}
+                    <ControlButton
+                      onClick={previousSong}
+                      title="Previous"
+                      aria-label="Previous song"
+                    >
                       <SkipBack size={20} fill="currentColor" />
                     </ControlButton>
 
+                    {/* Main Play/Pause button */}
                     <button
                       type="button"
                       onClick={handlePlayerToggle}
-                      className="w-[68px] h-[68px] sm:w-[78px] sm:h-[78px] rounded-full flex items-center justify-center"
+                      title={playing ? "Pause" : "Play"}
+                      aria-label={playing ? "Pause playback" : "Start playback"}
+                      className="flex h-17 w-17 shrink-0 items-center justify-center rounded-full transition-transform duration-200 active:scale-95 sm:h-19.5 sm:w-19.5"
                       style={{
                         color: "var(--theme-textDark)",
                         background: "var(--theme-gradient)",
@@ -1405,18 +1491,36 @@ export default function MusicPlayer() {
                       )}
                     </button>
 
-                    <ControlButton onClick={nextSong} title="Next">
+                    {/* Next track */}
+                    <ControlButton
+                      onClick={nextSong}
+                      title="Next"
+                      aria-label="Next song"
+                    >
                       <SkipForward size={20} fill="currentColor" />
                     </ControlButton>
 
+                    {/* Repeat one */}
                     <ControlButton
                       onClick={() =>
-                        setRepeat(repeat === "one" ? "off" : "one")
+                        setRepeat((previous) =>
+                          previous === "one" ? "off" : "one",
+                        )
                       }
                       active={repeat === "one"}
-                      title="Repeat"
+                      title={
+                        repeat === "one"
+                          ? "Disable repeat"
+                          : "Repeat current song"
+                      }
+                      aria-label={
+                        repeat === "one"
+                          ? "Disable repeat"
+                          : "Repeat current song"
+                      }
                     >
                       <Repeat size={18} />
+
                       {repeat === "one" && (
                         <span
                           className="absolute text-[7px] font-bold"
@@ -1467,7 +1571,10 @@ export default function MusicPlayer() {
                           min="0"
                           max={duration > 0 ? duration : 1}
                           step="0.1"
-                          value={Math.min(duration > 0 ? duration : 1, timelineTime)}
+                          value={Math.min(
+                            duration > 0 ? duration : 1,
+                            timelineTime,
+                          )}
                           disabled={duration <= 0}
                           onChange={(e) => {
                             const nextTime = Number(e.target.value);
@@ -2028,53 +2135,56 @@ export default function MusicPlayer() {
                             }}
                           />
                         </button>
-                      
 
-<button
-  type="button"
-  onClick={() =>
-    setRepeat((previous) => (previous === "one" ? "off" : "one"))
-  }
-  aria-pressed={repeat === "one"}
-  className={`player-tool-tile transition-all duration-300 ${
-    repeat === "one"
-      ? "!shadow-[inset_4px_4px_8px_rgba(0,0,0,0.4),inset_-4px_-4px_8px_rgba(255,255,255,0.04)] scale-[0.98] !border-[var(--theme-primary)]"
-      : "shadow-[5px_5px_10px_rgba(0,0,0,0.2),-5px_-5px_10px_rgba(255,255,255,0.02)]"
-  }`}
-  style={{
-    color:
-      repeat === "one"
-        ? "var(--theme-primary)"
-        : "var(--theme-textMuted)",
-    borderColor:
-      repeat === "one"
-        ? "rgba(140,124,247,.28)"
-        : "rgba(255,255,255,.035)",
-  }}
->
-  <span className="player-tool-icon">
-    <Repeat size={17} />
-  </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRepeat((previous) =>
+                              previous === "one" ? "off" : "one",
+                            )
+                          }
+                          aria-pressed={repeat === "one"}
+                          className={`player-tool-tile transition-all duration-300 ${
+                            repeat === "one"
+                              ? "!shadow-[inset_4px_4px_8px_rgba(0,0,0,0.4),inset_-4px_-4px_8px_rgba(255,255,255,0.04)] scale-[0.98] !border-[var(--theme-primary)]"
+                              : "shadow-[5px_5px_10px_rgba(0,0,0,0.2),-5px_-5px_10px_rgba(255,255,255,0.02)]"
+                          }`}
+                          style={{
+                            color:
+                              repeat === "one"
+                                ? "var(--theme-primary)"
+                                : "var(--theme-textMuted)",
+                            borderColor:
+                              repeat === "one"
+                                ? "rgba(140,124,247,.28)"
+                                : "rgba(255,255,255,.035)",
+                          }}
+                        >
+                          <span className="player-tool-icon">
+                            <Repeat size={17} />
+                          </span>
 
-  <span className="player-tool-copy">
-    <strong>Repeat one</strong>
-    <small>{repeat === "one" ? "Enabled" : "Current track"}</small>
-  </span>
+                          <span className="player-tool-copy">
+                            <strong>Repeat one</strong>
+                            <small>
+                              {repeat === "one" ? "Enabled" : "Current track"}
+                            </small>
+                          </span>
 
-  <span
-    className={`player-tool-status transition-all duration-300 ${
-      repeat === "one"
-        ? "shadow-[0_0_8px_var(--theme-primary)]"
-        : ""
-    }`}
-    style={{
-      background:
-        repeat === "one"
-          ? "var(--theme-primary)"
-          : "var(--theme-textMuted)",
-    }}
-  />
-</button>
+                          <span
+                            className={`player-tool-status transition-all duration-300 ${
+                              repeat === "one"
+                                ? "shadow-[0_0_8px_var(--theme-primary)]"
+                                : ""
+                            }`}
+                            style={{
+                              background:
+                                repeat === "one"
+                                  ? "var(--theme-primary)"
+                                  : "var(--theme-textMuted)",
+                            }}
+                          />
+                        </button>
                         <button
                           type="button"
                           onClick={handleShare}

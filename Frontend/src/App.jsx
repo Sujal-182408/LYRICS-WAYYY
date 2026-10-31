@@ -19,6 +19,8 @@ import RoleProtectedRoute from "./assets/components/RoleProtectedRoute";
 import { usePlayer } from "./context/PlayerContext";
 import { BASE_URL } from "./config/api";
 
+
+
 // =====================================================
 // AUTHENTICATION PAGES
 // =====================================================
@@ -338,6 +340,7 @@ const PersistentMusicPlayer = () => {
       aria-hidden={shouldHidePlayer}
     >
       <MusicPlayer />
+      
     </div>
   );
 };

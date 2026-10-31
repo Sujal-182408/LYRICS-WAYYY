@@ -32,7 +32,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { BASE_URL } from "../config/api";
 import { usePlayer } from "../context/PlayerContext";
-import YoutubeMusicDiscovery from "../assets/components/YoutubeMusicDiscovery";
 
 // ============================================================
 // CONFIGURATION
@@ -1627,8 +1626,6 @@ const renderSongSection = (
   "recommended",
 )}
 
-{/* YouTube Music Discovery */}
-<YoutubeMusicDiscovery />
 
             {/* 5. RECENTLY PLAYED */}
             <section className="mb-10">

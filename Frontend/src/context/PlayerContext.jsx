@@ -52,11 +52,11 @@ const normalizePlayerState = (saved) => {
     return null;
   }
 
-  const isValidTrack = (item) =>
-    item &&
-    typeof item === "object" &&
-    (item._id || item.id) &&
-    (item.audioFile || item.audioUrl);
+const isValidTrack = (item) =>
+  item &&
+  typeof item === "object" &&
+  (item._id || item.id) &&
+  Boolean(item.audioFile || item.audioUrl || item.audio);
 
   const song = saved.song && isValidTrack(saved.song) ? saved.song : null;
 
@@ -125,8 +125,13 @@ const readUserQueue = (userId) => {
     const parsed = saved ? JSON.parse(saved) : [];
 
   return Array.isArray(parsed)
-  ? parsed.filter((song) => song && (song._id || song.id))
-  : [];
+    ? parsed.filter(
+        (song) =>
+          song &&
+          (song._id || song.id) &&
+          Boolean(song.audioFile || song.audioUrl || song.audio),
+      )
+    : [];
   } catch (error) {
     console.warn("Failed to restore playback queue:", error);
     return [];
@@ -182,10 +187,7 @@ const getSongAudioSource = (song) =>
   // AUDIO
   // =====================================================
 
-  const audioRef = useRef(null);
-  // YouTube playback is controlled by the visible IFrame Player API surface
-  // rendered by MusicPlayer. Uploaded/local tracks continue using audioRef.
-  const youtubePlayerRef = useRef(null);
+const audioRef = useRef(null);
 
   if (!audioRef.current) {
     audioRef.current = new Audio();
@@ -419,7 +421,9 @@ useEffect(() => {
       const next = typeof value === "function" ? value(previous) : value;
 
       const safeQueue = Array.isArray(next)
-        ? next.filter((song) => song && song._id)
+        ? next.filter(
+            (song) => song && song._id && getSongAudioSource(song),
+          )
         : [];
 
       queueRef.current = safeQueue;
@@ -433,7 +437,7 @@ useEffect(() => {
   // =====================================================
 
   const addToQueue = useCallback((song) => {
-    if (!song?._id) return;
+    if (!song?._id || !getSongAudioSource(song)) return;
 
     setQueueState((previous) => {
       const list = Array.isArray(previous) ? previous : [];
@@ -453,7 +457,7 @@ useEffect(() => {
   }, []);
 
   const playNext = useCallback((song) => {
-    if (!song?._id) return;
+    if (!song?._id || !getSongAudioSource(song)) return;
 
     setQueueState((previous) => {
       const list = (Array.isArray(previous) ? previous : []).filter(
@@ -500,7 +504,7 @@ useEffect(() => {
     sessionGenerationRef.current += 1;
 
     const audio = audioRef.current;
-    try { youtubePlayerRef.current?.stopVideo?.(); } catch { /* Ignore during teardown. */ }
+if (!audio) return;
 
     if (audio) {
       audio.pause();
@@ -1111,19 +1115,18 @@ return `${baseUrl}/${cleanPath}`;
     }
 
 
-
 const audioSource = getSongAudioSource(song);
 const url = getAudioUrl(audioSource);
 
-    if (!url) {
-      console.error(
-        "Could not restore saved song: audio URL is missing.",
-        song,
-      );
+if (!url) {
+  console.warn(
+    "Skipping saved song without a playable audio URL:",
+    song?.title || song?._id || "Unknown song",
+  );
 
-      restoreReadyRef.current = true;
-      return;
-    }
+  restoreReadyRef.current = true;
+  return;
+}
 
     let cancelled = false;
 
@@ -1240,36 +1243,12 @@ return () => {
   repeat,
 ]);
 
-  // Audio-only mode: a YouTube ID is metadata, not an audio source. Treat a track
-  // as externally hosted only when it has no real audio file/URL. No iframe is mounted.
-  const isYouTubeTrack = (song) =>
-    Boolean((song?.youtubeVideoId || song?.videoId) && !getSongAudioSource(song));
-
-  const registerYouTubePlayer = useCallback((player) => {
-    youtubePlayerRef.current = player || null;
-    if (player) {
-      try {
-        player.setVolume?.(mutedRef.current ? 0 : Math.round(volumeRef.current * 100));
-      } catch { /* Player may not be ready yet. */ }
-    }
-  }, []);
-
-  const updateYouTubeProgress = useCallback((time, totalDuration, isPlaying) => {
-    const safeTime = Number(time);
-    const safeDuration = Number(totalDuration);
-    if (Number.isFinite(safeTime) && safeTime >= 0) setCurrentTime(safeTime);
-    if (Number.isFinite(safeDuration) && safeDuration > 0) {
-      durationRef.current = safeDuration;
-      setDuration(safeDuration);
-    }
-    if (typeof isPlaying === "boolean") setPlaying(isPlaying);
-  }, []);
-
   // =====================================================
   // PLAY SONG
   // =====================================================
 
- const playSongInternal = useCallback(
+
+const playSongInternal = useCallback(
   async (
     song,
     index = 0,
@@ -1283,6 +1262,15 @@ return () => {
     }
 
     if (!song || typeof song !== "object") return;
+
+    if (!getSongAudioSource(song)) {
+      console.warn(
+        "Cannot play this track because it has no uploaded audio source:",
+        song.title || song._id || song.id || "Unknown track",
+      );
+      setPlaying(false);
+      return;
+    }
 
     // Support MongoDB _id and fallback id.
     const rawSongId = song._id ?? song.id;
@@ -1340,7 +1328,9 @@ return () => {
       playlistIndexRef.current = -1;
     }
 
-    const sameSong = getTrackId(currentSongRef.current) === songId;
+    const sameSong =
+      getTrackId(currentSongRef.current) === songId;
+
     const epoch = ++playbackEpochRef.current;
 
     try {
@@ -1350,7 +1340,8 @@ return () => {
         audio.pause();
         sessionGenerationRef.current += 1;
 
-        const finishPreviousSession = finishListeningSession(false);
+        const finishPreviousSession =
+          finishListeningSession(false);
 
         // Don't continue if a newer request has taken over.
         if (
@@ -1358,23 +1349,27 @@ return () => {
           epoch !== playbackEpochRef.current ||
           activeUserIdRef.current !== userId
         ) {
-          void Promise.resolve(finishPreviousSession).catch((error) => {
-            console.error(
-              "Finish previous listening session failed:",
-              error,
-            );
-          });
+          void Promise.resolve(finishPreviousSession).catch(
+            (error) => {
+              console.error(
+                "Finish previous listening session failed:",
+                error,
+              );
+            },
+          );
 
           return;
         }
 
         // Don't block playback while the old session finishes.
-        void Promise.resolve(finishPreviousSession).catch((error) => {
-          console.error(
-            "Finish previous listening session failed:",
-            error,
-          );
-        });
+        void Promise.resolve(finishPreviousSession).catch(
+          (error) => {
+            console.error(
+              "Finish previous listening session failed:",
+              error,
+            );
+          },
+        );
       }
 
       restoreReadyRef.current = true;
@@ -1397,21 +1392,10 @@ return () => {
       setDuration(0);
       resetPlaybackTrackers();
 
-      // Audio-only mode: never mount or control a YouTube video player.
-      // A track carrying a YouTube ID can still play if it also has a real audioFile/audioUrl.
+      // ================================================
+      // UPLOADED / CLOUDINARY / LOCAL AUDIO PLAYBACK
+      // ================================================
       const audioSource = getSongAudioSource(song);
-      if (!audioSource && (song.youtubeVideoId || song.videoId)) {
-        audio.pause();
-        audio.removeAttribute("src");
-        audio.load();
-        setPlaying(false);
-        console.warn(
-          `Audio-only playback unavailable for "${song.title || "this track"}": this record has a YouTube ID but no audioFile/audioUrl. Add a licensed audio file/URL to play it without video.`,
-        );
-        return;
-      }
-
-      // Resolve the audio source for uploaded/local tracks.
       const url = getAudioUrl(audioSource);
 
       if (!url) {
@@ -1446,7 +1430,7 @@ return () => {
 
       setPlaying(true);
 
-      // Update duration if metadata is already available.
+      // Update duration if metadata is available.
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
         durationRef.current = audio.duration;
         setDuration(audio.duration);
@@ -1456,7 +1440,7 @@ return () => {
         Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
       );
 
-      // Only MongoDB songs should create database listening sessions.
+      // Create listening sessions only for real database songs.
       if (song._id && activeUserIdRef.current === userId) {
         void createListeningSession(song);
       }
@@ -1494,29 +1478,6 @@ return () => {
     [playSongInternal],
   );
 
-  const playYouTubeSong = useCallback((video, videos = [], index = 0) => {
-    const videoId = video?.videoId || video?.youtubeVideoId;
-    if (!videoId) return;
-    const normalize = (item) => ({
-      _id: `youtube:${item.videoId || item.youtubeVideoId}`,
-      id: `youtube:${item.videoId || item.youtubeVideoId}`,
-      youtubeVideoId: item.videoId || item.youtubeVideoId,
-      isYouTubeTrack: true,
-      title: item.title || "YouTube track",
-      artist: item.artist || "YouTube Music",
-      coverImage: item.thumbnail || item.coverImage || "",
-      album: "YouTube Music",
-      source: "youtube",
-    });
-    const normalizedPlaylist = (Array.isArray(videos) && videos.length ? videos : [video])
-      .filter((item) => item?.videoId || item?.youtubeVideoId)
-      .map(normalize);
-    const selectedId = `youtube:${videoId}`;
-    const safeIndex = Math.max(0, normalizedPlaylist.findIndex((item) => item._id === selectedId));
-    const selected = normalizedPlaylist.find((item) => item._id === selectedId) || normalize(video);
-    void playSongInternal(selected, safeIndex >= 0 ? safeIndex : index, normalizedPlaylist, "playlist");
-  }, [playSongInternal]);
-
   // =====================================================
   // PLAY / PAUSE
   // =====================================================
@@ -1541,15 +1502,6 @@ const togglePlay = useCallback(async () => {
     return;
   }
 
-  if (isYouTubeTrack(song)) {
-    // This is a YouTube-only record, not a playable audio source. Do not fake
-    // a playing state; video playback is intentionally disabled in audio-only mode.
-    setPlaying(false);
-    console.warn(
-      `Cannot play "${song.title || "this track"}" in audio-only mode because it has no audioFile/audioUrl.`,
-    );
-    return;
-  }
 
   if (!audio) return;
 
@@ -1731,13 +1683,11 @@ const togglePlay = useCallback(async () => {
   const currentSongId = getTrackId(currentSongRef.current);
   if (!currentSongId) return;
 
-  // Keep songs that have an ID and a usable audio source.
+  // Keep only tracks with a usable uploaded audio source.
   const validSongs = (list) =>
     Array.isArray(list)
       ? list.filter(
-          (song) =>
-            getTrackId(song) &&
-            Boolean(getSongAudioSource(song)),
+          (song) => getTrackId(song) && Boolean(getSongAudioSource(song)),
         )
       : [];
 
@@ -1904,14 +1854,12 @@ const togglePlay = useCallback(async () => {
   const currentSongId = getTrackId(currentSongRef.current);
   if (!currentSongId) return;
 
-  const validSongs = (list) =>
-    Array.isArray(list)
-      ? list.filter(
-          (song) =>
-            getTrackId(song) &&
-            Boolean(getSongAudioSource(song)),
-        )
-      : [];
+const validSongs = (list) =>
+  Array.isArray(list)
+    ? list.filter(
+        (song) => getTrackId(song) && Boolean(getSongAudioSource(song)),
+      )
+    : [];
 
   const source = playbackSourceRef.current;
 
@@ -2000,19 +1948,12 @@ const togglePlay = useCallback(async () => {
   // =====================================================
 
 const seekSong = useCallback((time) => {
-  const audio = audioRef.current;
-  const activeSong = currentSongRef.current;
   const nextTime = Number(time);
 
-  if (!Number.isFinite(nextTime)) return;
-  if (isYouTubeTrack(activeSong)) {
-    // No embedded video player in audio-only mode.
-    return;
-  }
+  if (!Number.isFinite(nextTime) || nextTime < 0) return;
 
+  const audio = audioRef.current;
   if (!audio) return;
-
-  if (!Number.isFinite(nextTime)) return;
 
   const maxTime =
     Number.isFinite(audio.duration) && audio.duration > 0
@@ -2023,7 +1964,6 @@ const seekSong = useCallback((time) => {
 
   try {
     seekingRef.current = true;
-
     lastPlaybackTickRef.current = null;
     previousPlaybackPositionRef.current = null;
 
@@ -2056,34 +1996,28 @@ const changeVolume = useCallback((value) => {
   if (audioRef.current) {
     audioRef.current.volume = shouldMute ? 0 : safeVolume;
   }
-  // Audio-only mode: volume is controlled by the HTMLAudioElement.
+
 }, []);
 
 const toggleMute = useCallback(() => {
-  if (mutedRef.current) {
-    const restoredVolume =
-      volumeRef.current > 0 ? volumeRef.current : 1;
+  const nextMuted = !mutedRef.current;
+  const restoredVolume = volumeRef.current > 0
+    ? volumeRef.current
+    : 1;
 
+  mutedRef.current = nextMuted;
+
+  if (!nextMuted) {
     volumeRef.current = restoredVolume;
-    mutedRef.current = false;
-
-    if (audioRef.current) {
-      audioRef.current.volume = restoredVolume;
-    }
-    // Audio-only mode: volume is controlled by the HTMLAudioElement.
-
     setVolume(restoredVolume);
-    setMuted(false);
-  } else {
-    mutedRef.current = true;
-
-    if (audioRef.current) {
-      audioRef.current.volume = 0;
-    }
-    // Audio-only mode: mute the HTMLAudioElement.
-
-    setMuted(true);
   }
+
+  setMuted(nextMuted);
+
+  if (audioRef.current) {
+    audioRef.current.volume = nextMuted ? 0 : restoredVolume;
+  }
+
 }, []);
 
   // =====================================================
@@ -2137,22 +2071,6 @@ const cancelSleepTimer = useCallback(() => {
   setSleepTimer(null);
 }, [clearSleepTimerInterval]);
 
-  const handleYouTubeEnded = useCallback(async () => {
-    if (sleepTimerModeRef.current === "end") {
-      cancelSleepTimer();
-      setPlaying(false);
-      return;
-    }
-    if (repeatRef.current === "one" || repeatRef.current === "song" || repeatRef.current === 1) {
-      try {
-        youtubePlayerRef.current?.seekTo?.(0, true);
-        youtubePlayerRef.current?.playVideo?.();
-        setPlaying(true);
-      } catch (error) { console.warn("Could not repeat YouTube track:", error); }
-      return;
-    }
-    await nextSong();
-  }, [cancelSleepTimer, nextSong]);
 
 
 useEffect(() => {
@@ -2182,7 +2100,6 @@ useEffect(() => {
       accumulateListeningTime(true);
 
       audioRef.current?.pause();
-      try { youtubePlayerRef.current?.pauseVideo?.(); } catch { /* YouTube player may be unmounted. */ }
       setPlaying(false);
 
       // Save the final progress for the current listening session.
@@ -2321,12 +2238,12 @@ useEffect(() => {
     }
   };
 
-  const validSongs = (list) =>
-    Array.isArray(list)
-      ? list.filter(
-          (song) => getTrackId(song) && getTrackSource(song),
-        )
-      : [];
+const validSongs = (list) =>
+  Array.isArray(list)
+    ? list.filter(
+        (song) => getTrackId(song) && Boolean(getTrackSource(song)),
+      )
+    : [];
 
   const handleEnded = async () => {
     accumulateListeningTime(true);
@@ -2603,10 +2520,6 @@ useEffect(() => {
       duration,
 
       playSong,
-      playYouTubeSong,
-      registerYouTubePlayer,
-      updateYouTubeProgress,
-      handleYouTubeEnded,
       togglePlay,
       nextSong,
       previousSong,
@@ -2645,10 +2558,6 @@ useEffect(() => {
       playing,
       duration,
       playSong,
-      playYouTubeSong,
-      registerYouTubePlayer,
-      updateYouTubeProgress,
-      handleYouTubeEnded,
       togglePlay,
       nextSong,
       previousSong,

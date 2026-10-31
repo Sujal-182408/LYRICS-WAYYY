@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 import { getSongs } from "../services/songService";
-import { searchYouTubeMusic } from "../services/youtubeMusicService";
 
 import {
   addFavorite,
@@ -58,7 +57,6 @@ const smallRaised = "neu-raised-small";
 const Collection = () => {
   const {
     playSong,
-    playYouTubeSong,
     currentSong,
     playing,
     currentTime,
@@ -76,6 +74,18 @@ const Collection = () => {
     setShuffle,
     setRepeat,
   } = usePlayer();
+
+  // Audio metadata can briefly be NaN while a track is loading. Keep every
+  // controlled range input on a finite numeric value.
+  const safeCurrentTime = Number.isFinite(Number(currentTime))
+    ? Math.max(0, Number(currentTime))
+    : 0;
+  const safeDuration = Number.isFinite(Number(duration))
+    ? Math.max(0, Number(duration))
+    : 0;
+  const safeVolume = Number.isFinite(Number(volume))
+    ? Math.min(1, Math.max(0, Number(volume)))
+    : 0;
 
   // =========================================================
   // PLAYER TIME
@@ -98,10 +108,8 @@ const Collection = () => {
   // STATE
   // =========================================================
 
-  // Uploaded tracks and YouTube results share the same Collection grid.
+  // Uploaded tracks from the music library.
   const [songs, setSongs] = useState([]);
-  const [youtubeSongs, setYoutubeSongs] = useState([]);
-  const [youtubeLoading, setYoutubeLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("All");
 
@@ -327,60 +335,7 @@ const Collection = () => {
     fetchFavorites();
   }, []);
 
-  // Keep YouTube discovery inside the existing Collection list (no separate section).
-  // The same search field searches local tracks and refreshes YouTube results.
-  useEffect(() => {
-    let cancelled = false;
-    const query = search.trim() || "popular Hindi songs official music video";
-    const timer = window.setTimeout(async () => {
-      setYoutubeLoading(true);
-      try {
-        const results = await searchYouTubeMusic(query, 12);
-        if (cancelled) return;
-        const normalized = (Array.isArray(results) ? results : [])
-          .filter((video) => video?.videoId || video?.youtubeVideoId)
-          .map((video) => {
-            const videoId = String(video.videoId || video.youtubeVideoId);
-            return {
-              _id: `youtube:${videoId}`,
-              id: `youtube:${videoId}`,
-              youtubeVideoId: videoId,
-              isYouTubeTrack: true,
-              source: "youtube",
-              title: video.title || "YouTube track",
-              artist: video.artist || "YouTube Music",
-              coverImage: video.thumbnail || video.coverImage || "",
-              album: "YouTube Music",
-              genre: "YouTube Music",
-              duration: Number(video.duration) || 0,
-            };
-          });
-        setYoutubeSongs(normalized);
-      } catch (err) {
-        if (!cancelled) {
-          console.warn("Collection YouTube search failed:", err?.message || err);
-          setYoutubeSongs([]);
-        }
-      } finally {
-        if (!cancelled) setYoutubeLoading(false);
-      }
-    }, search.trim() ? 450 : 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [search]);
-
-  const allSongs = useMemo(() => {
-    const localIds = new Set(songs.map((song) => String(song?._id ?? song?.id)));
-    return [
-      ...songs,
-      ...youtubeSongs.filter((song) => !localIds.has(String(song._id))),
-    ];
-  }, [songs, youtubeSongs]);
-
-  const isYouTubeTrack = (song) => Boolean(song?.youtubeVideoId || song?.source === "youtube");
+  const allSongs = songs;
 
   // =========================================================
   // STATISTICS
@@ -497,12 +452,6 @@ const Collection = () => {
       return;
     }
 
-    // External YouTube video IDs are not MongoDB Song IDs.
-    // Do not send them to the uploaded-song favorites endpoint.
-    if (String(songId).startsWith("youtube:")) {
-      return;
-    }
-
     /*
     Prevent duplicate requests.
     */
@@ -596,19 +545,10 @@ const Collection = () => {
     const index = filteredSongs.findIndex(
       (item) => String(item?._id ?? item?.id) === String(song?._id ?? song?.id),
     );
+
     if (index < 0) return;
 
-    if (isYouTubeTrack(song)) {
-      const youtubePlaylist = filteredSongs.filter(isYouTubeTrack);
-      const youtubeIndex = youtubePlaylist.findIndex(
-        (item) => String(item.youtubeVideoId) === String(song.youtubeVideoId),
-      );
-      playYouTubeSong(song, youtubePlaylist, Math.max(0, youtubeIndex));
-      return;
-    }
-
-    // Keep uploaded MP3 playback unchanged; pass the combined list so next/previous
-    // can move between uploaded tracks and YouTube tracks where supported.
+    // Play uploaded audio tracks through the regular HTML audio player.
     playSong(song, index, filteredSongs);
   };
 
@@ -1102,14 +1042,13 @@ const Collection = () => {
                         <input
                           type="range"
                           min="0"
-                          max={
-                            duration || 0
-                          }
+                          max={safeDuration > 0 ? safeDuration : 1}
                           step="0.1"
                           value={Math.min(
-                            currentTime,
-                            duration || 0
+                            safeCurrentTime,
+                            safeDuration > 0 ? safeDuration : 1
                           )}
+                          disabled={safeDuration <= 0}
                           onChange={(e) =>
                             seekSong(
                               Number(
@@ -1295,9 +1234,7 @@ const Collection = () => {
                         <div
                           className="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded-full bg-[var(--theme-primary)] pointer-events-none"
                           style={{
-                            width: `${
-                              volume * 100
-                            }%`,
+                            width: `${safeVolume * 100}%`,
                           }}
                         />
 
@@ -1306,11 +1243,7 @@ const Collection = () => {
                           min="0"
                           max="1"
                           step="0.01"
-                          value={
-                            muted
-                              ? 0
-                              : volume
-                          }
+                          value={muted ? 0 : safeVolume}
                           onChange={(e) =>
                             changeVolume(
                               Number(
@@ -1492,7 +1425,7 @@ const Collection = () => {
             </div>
           </motion.div>
 
-          {error && songs.length === 0 && youtubeSongs.length === 0 && !youtubeLoading ? (
+          {error && songs.length === 0 ? (
             <motion.div
               variants={fadeUp}
               className={`rounded-2xl p-8 text-center ${pressed}`}
@@ -1540,7 +1473,7 @@ const Collection = () => {
               </h3>
 
               <p className="mt-2 text-sm text-[var(--theme-text-muted)]">
-                {youtubeLoading ? "Searching YouTube and your uploaded library." : "Try another search or genre."}
+                {"Try another search or genre."}
               </p>
             </motion.div>
           ) : (
@@ -1550,8 +1483,7 @@ const Collection = () => {
             >
               {filteredSongs.map(
                 (song, index) => {
-                  const youtubeTrack = isYouTubeTrack(song);
-                  const favorite = !youtubeTrack && isFavorite(song._id);
+                  const favorite = isFavorite(song._id);
 
                   const favoriteBusy =
                     Boolean(
@@ -1691,12 +1623,7 @@ const Collection = () => {
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                            {youtubeTrack && (
-                              <span className={`px-2.5 py-1 rounded-md text-[8px] uppercase tracking-wider text-[var(--theme-secondary)] ${pressed}`}>
-                                YouTube
-                              </span>
-                            )}
-                            {song.genre && !youtubeTrack && (
+                            {song.genre && (
                               <span
                                 className={`px-2.5 py-1 rounded-md text-[8px] uppercase tracking-wider text-[var(--theme-text-muted)] ${pressed}`}
                               >
@@ -1728,7 +1655,7 @@ const Collection = () => {
 
                           <button
                             type="button"
-                            disabled={favoriteBusy || youtubeTrack}
+                            disabled={favoriteBusy}
                             onClick={(e) =>
                               toggleFavorite(song._id, e)
                             }
@@ -1736,22 +1663,18 @@ const Collection = () => {
                               favorite ? "is-favorite" : ""
                             } ${favoriteBusy ? "is-loading" : ""}`}
                             title={
-                              youtubeTrack
-                                ? "Favorites are available for uploaded songs"
-                                : favoriteBusy
-                                  ? "Updating favorite..."
-                                  : favorite
-                                    ? "Remove favorite"
-                                    : "Add favorite"
+                              favoriteBusy
+                                ? "Updating favorite..."
+                                : favorite
+                                  ? "Remove favorite"
+                                  : "Add favorite"
                             }
                             aria-label={
-                              youtubeTrack
-                                ? "Favorites are available for uploaded songs"
-                                : favoriteBusy
-                                  ? "Updating favorite"
-                                  : favorite
-                                    ? "Remove favorite"
-                                    : "Add favorite"
+                              favoriteBusy
+                                ? "Updating favorite"
+                                : favorite
+                                  ? "Remove favorite"
+                                  : "Add favorite"
                             }
                             aria-busy={favoriteBusy}
                           >

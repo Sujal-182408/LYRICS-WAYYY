@@ -255,6 +255,8 @@ import analyticsRoutes from "./routes/analyticsRoutes.js";
 import artistApplicationRoutes from "./routes/artistApplicationRoutes.js";
 import superAdminArtistApplicationRoutes from "./routes/superAdminArtistApplicationRoutes.js";
 
+import externalMusicRoutes from "./routes/externalMusicRoutes.js";
+
 // =====================================================
 // AUTH ROUTES
 // =====================================================
@@ -319,6 +321,12 @@ app.use("/api/playlists", playlistRoutes);
 // =====================================================
 
 app.use("/api/superadmin", superAdminRoutes);
+
+// ========================================================== 
+// Mount external music routes under /api/external-music.
+// ==========================================================
+
+app.use("/api/external-music", externalMusicRoutes);
 
 // =====================================================
 // PROFILE ROUTES
