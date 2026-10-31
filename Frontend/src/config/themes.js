@@ -8,40 +8,40 @@ export const themes = {
 
 whiteBlack: {
   id: "whiteBlack",
-  name: "White Black",
+  name: "Slate Silver",
 
   colors: {
-    background: "#0b0809",
-    surface: "#0A0A0A",
-    surfaceLight: "#171717",
+    background: "#171C24",
+    surface: "#252D38",
+    surfaceLight: "#303946",
 
-    shadowDark: "#000000",
-    shadowLight: "#333333",
+    shadowDark: "#0E1218",
+    shadowLight: "#35404E",
 
-    primary: "#FFFFFF",
-    secondary: "#FFFFFF",
+    primary: "#C5CED8",
+    secondary: "#8E9BAA",
 
-    text: "#FFFFFF",
-    textMuted: "#999999",
-    textDark: "#000000",
+    text: "#E2E7ED",
+    textMuted: "#929EAC",
+    textDark: "#171C24",
 
-    border: "rgba(255,255,255,0.08)",
+    border: "rgba(197,206,216,0.12)",
 
-    hover: "#1F1F1F",
-    active: "#292929",
+    hover: "#35404E",
+    active: "#3D4856",
 
-    success: "#FFFFFF",
-    danger: "#FF4D4D",
-    warning: "#FFD166",
-    info: "#FFFFFF",
+    success: "#9BBFA8",
+    danger: "#D98282",
+    warning: "#D6BC83",
+    info: "#AABBD0",
 
-    overlay: "rgba(0,0,0,0.75)",
+    overlay: "rgba(10,14,20,0.78)",
 
-    glowPrimary: "rgba(255,255,255,0.18)",
-    glowSecondary: "rgba(255,255,255,0.10)",
+    glowPrimary: "rgba(197,206,216,0.18)",
+    glowSecondary: "rgba(142,155,170,0.14)",
 
     gradient:
-      "linear-gradient(135deg, #FFFFFF 0%, #BDBDBD 45%, #555555 100%)",
+      "linear-gradient(135deg, #E2E7ED 0%, #AEB8C4 45%, #697787 100%)",
   },
 },
   // =====================================================
