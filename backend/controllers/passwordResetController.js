@@ -8,21 +8,31 @@ import User from "../models/User.js";
 --------------------------------- */
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_APP_PASSWORD,
+    pass: process.env.EMAIL_APP_PASSWORD?.replace(/\s/g, ""),
   },
+
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 20000,
 });
 
-const FRONTEND_URL =
-  process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL = (
+  process.env.FRONTEND_URL || "http://localhost:5173"
+).replace(/\/+$/, "");
 
 /* --------------------------------
    FORGOT PASSWORD
 --------------------------------- */
 
 export const forgotPassword = async (req, res) => {
+  let user;
+
   try {
     const { email } = req.body;
 
@@ -35,11 +45,11 @@ export const forgotPassword = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await User.findOne({
+    user = await User.findOne({
       email: normalizedEmail,
     });
 
-    // Generic response prevents account enumeration.
+    // Prevent account enumeration.
     const genericResponse = {
       success: true,
       message:
@@ -50,40 +60,63 @@ export const forgotPassword = async (req, res) => {
       return res.status(200).json(genericResponse);
     }
 
-    // Generate a secure random token.
+    // Generate secure random token.
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    // Store only the hashed token in MongoDB.
+    // Hash token before storing it.
     const hashedToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
 
     user.passwordResetToken = hashedToken;
-    user.passwordResetExpires = Date.now() + 15 * 60 * 1000;
+    user.passwordResetExpires = new Date(
+      Date.now() + 15 * 60 * 1000
+    );
 
     await user.save({ validateBeforeSave: false });
 
-    const resetURL = `${FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetURL =
+      `${FRONTEND_URL}/reset-password/${resetToken}`;
 
     try {
+      // Send email through Gmail SMTP.
       await transporter.sendMail({
         from: `"LYRICS WAYYY" <${process.env.EMAIL_USER}>`,
         to: user.email,
         subject: "LYRICS WAYYY - Password Reset",
+
         html: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:25px;background:#15181d;color:#ffffff;border-radius:14px;">
-            <h2 style="color:#8c7cf7;">LYRICS WAYYY</h2>
+          <div style="
+            font-family:Arial,sans-serif;
+            max-width:600px;
+            margin:auto;
+            padding:25px;
+            background:#15181d;
+            color:#ffffff;
+            border-radius:14px;
+          ">
+            <h2 style="color:#8c7cf7;">
+              LYRICS WAYYY
+            </h2>
 
             <h3>Password Reset Request</h3>
 
             <p>We received a request to reset your password.</p>
 
-            <p>Click the button below to create a new password.</p>
+            <p>Click below to create a new password.</p>
 
             <a
               href="${resetURL}"
-              style="display:inline-block;padding:13px 22px;background:#8c7cf7;color:white;text-decoration:none;border-radius:8px;font-weight:bold;"
+              style="
+                display:inline-block;
+                padding:13px 22px;
+                background:#8c7cf7;
+                color:white;
+                text-decoration:none;
+                border-radius:8px;
+                font-weight:bold;
+              "
             >
               Reset Password
             </a>
@@ -92,23 +125,47 @@ export const forgotPassword = async (req, res) => {
               This link expires in 15 minutes.
             </p>
 
-            <p>If you did not request this, you can safely ignore this email.</p>
+            <p>
+              If you did not request this, you can safely ignore this email.
+            </p>
           </div>
         `,
       });
-    } catch (emailError) {
-      console.error("Password reset email error:", emailError);
 
-      // Clear the token if sending fails.
+      console.log("Password reset email sent successfully.");
+    } catch (emailError) {
+      console.error(
+        "Password reset email error:",
+        emailError.code,
+        emailError.message
+      );
+
+      // Clear the reset token if email delivery fails.
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
 
       await user.save({ validateBeforeSave: false });
+
+      return res.status(503).json({
+        success: false,
+        message: "Unable to send the reset link. Please try again later.",
+      });
     }
 
     return res.status(200).json(genericResponse);
   } catch (error) {
     console.error("Forgot password error:", error);
+
+    if (user) {
+      try {
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+
+        await user.save({ validateBeforeSave: false });
+      } catch (cleanupError) {
+        console.error("Reset token cleanup error:", cleanupError);
+      }
+    }
 
     return res.status(500).json({
       success: false,
@@ -153,13 +210,11 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash the token received from the URL.
     const hashedToken = crypto
       .createHash("sha256")
       .update(token)
       .digest("hex");
 
-    // Find a user with a valid, unexpired token.
     const user = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() },
@@ -172,10 +227,8 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash the new password.
     user.password = await bcrypt.hash(newPassword, 12);
 
-    // Invalidate the reset token.
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
 
